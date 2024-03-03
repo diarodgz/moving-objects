@@ -37,9 +37,9 @@ The target location is displayed with a blue cross.
 
 For now, the program must be installed via cloning from the terminal with:
 
-´´´git clone https://github.com/diarodgz/moving-objects.git´´´
+```git clone https://github.com/diarodgz/moving-objects.git```
 
-And executed from ´´´main.py´´´ until it is converted into an executable.
+And executed from ```main.py``` until it is converted into an executable.
 
 ## Further reading:
 
