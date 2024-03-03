@@ -41,6 +41,18 @@ For now, the program must be installed via cloning from the terminal with:
 
 And executed from ```main.py``` until it is converted into an executable.
 
+# Required Packages:
+
+* matplotlib
+* PyQt5
+* astropy
+* astroquery
+* regions
+* reproject
+* os
+* datetime
+* urllib
+
 ## Further reading:
 
 wip
