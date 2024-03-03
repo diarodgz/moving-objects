@@ -41,7 +41,7 @@ For now, the program must be installed via cloning from the terminal with:
 
 And executed from ```main.py``` until it is converted into an executable.
 
-# Required Packages:
+## Required Packages:
 
 * matplotlib
 * PyQt5
