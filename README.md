@@ -12,7 +12,7 @@ The target location is displayed with a blue cross.
 * Detect the brightest sources in the sky. 
 * Display this information alongside the mosaic.
 
-Current features that need to be fixed:
+## Current features that need to be fixed:
 
 * Source detection not working correctly, leading to errors in the information displayed on the GUI regarding nearby and/or bright sources.
 * GUI freezing.
@@ -24,7 +24,7 @@ Incomplete features:
 
 * Time format radio buttons not functional yet.
 
-Future features:
+## Future features:
 
 * Plotting FOV visualization and rotation.
 * Changing FOV according to the selected instrument.
