@@ -3,7 +3,9 @@
 ## Project Description
 
 This tool provides a graphic user interface (GUI) that will allow the user to request ephemeris files from the Minor Planet Center (MPC) of different moving objects during a certain time window. The main objective of this tool is to prevent stellar contamination in moving objects
-and to ensure optimal observing time for the target in question. The tool can currently:
+and to ensure optimal observing time for the target in question. 
+
+**The tool can currently:**
 
 * Display an interactive mosaic of the sky during this time frame so the user can know what to expect during the observation of their target. 
 The target location is displayed with a blue cross.
@@ -19,6 +21,7 @@ The target location is displayed with a blue cross.
 * Compass, although included in the plot, not functional nor adapting to user interaction.
 * Incomplete implementation of the catalog changing function.
 * Exception handling not as robust yet.
+* Adjust window size to different screen resolutions.
 
 **Incomplete features:**
 
@@ -59,7 +62,8 @@ wip
 
 ## Notes:
 
-This project was created by Claudia Rodríguez for the ESO Paranal Summer Internship under the supervision of Michaël Marsset. 
+* This project was created by Claudia Rodríguez for the ESO Paranal Summer Internship under the supervision of Michaël Marsset.
+* The name is a work in progress.
 
 
 
