@@ -7,8 +7,8 @@ and to ensure optimal observing time for the target in question.
 
 **The tool can currently:**
 
-* Display an interactive mosaic of the sky during this time frame so the user can know what to expect during the observation of their target. 
-The target location is displayed with a blue cross.
+* Receive the ID of a target and display an interactive mosaic of the sky during this time frame so the user can know what to expect during the observation of their target. The target location is displayed with a blue cross.
+* Receive the location of a target in RADEC coordinates and display a single image of the sky.
 * The tool will estimate the best dates to observe the target. 
 * Calculate the distances of nearby sources.
 * Detect the brightest sources in the sky. 
@@ -21,7 +21,6 @@ The target location is displayed with a blue cross.
 * Compass, although included in the plot, not functional nor adapting to user interaction.
 * Incomplete implementation of the catalog changing function.
 * Exception handling not as robust yet.
-* Adjust window size to different screen resolutions.
 
 **Incomplete features:**
 
@@ -35,6 +34,7 @@ The target location is displayed with a blue cross.
 * Opening, reading, and loading Observation Block (OB) information.
 * Date displayed after hovering mouse over target location.
 * Convert script into an executable.
+* Adjust window size to different screen resolutions.
 
 ## Installation & Execution
 
