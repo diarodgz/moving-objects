@@ -48,7 +48,8 @@ def sky_init(eph, fov):
 
     for RA, DEC, date in tqdm(zip(eph['RA'], eph['Dec'], eph['Date']), total=len(eph)):
         c = SkyCoord(ra=RA*u.degree, dec=DEC*u.degree, frame='icrs')
-        v = Vizier(catalog='V/154', keywords=['optical'], row_limit=1000, columns=['all']) # SDSS16
+        v = Vizier(catalog='V/154', keywords=['optical'], row_limit=-1, columns=['all'],
+                   column_filters={"gmag":"<21"}) # SDSS16
         result = v.query_region(coordinates=c, width=Angle(fov, u.arcminute), 
                                 height=Angle(fov, u.arcminute), frame='icrs')
         sky = Sky(i, result, c, date)

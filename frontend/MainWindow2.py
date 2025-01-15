@@ -302,6 +302,8 @@ class MainWindow(QMainWindow):
         # it takes the Canvas widget and a parent
         self.toolbar = NavigationToolbar(self.canvas, self)
 
+        self.canvas.mpl_connect('motion_notify_event', self.motion_hover)
+
         self.target_group = QButtonGroup(self)
         self.target_group.addButton(self.targ_button)
         self.target_group.addButton(self.coord_button)
@@ -745,7 +747,7 @@ class MainWindow(QMainWindow):
         of skys, the optimal WCS, and the final array for plotting.
         '''
 
-        skys = info[0]
+        self.skys = info[0]
         wcs_out = info[1]
         array = info[2]
 
@@ -756,45 +758,67 @@ class MainWindow(QMainWindow):
         # Plotting the mosaic.
         norm = simple_norm(array, 'sqrt', percent=99.)
 
-        ax = plt.subplot(projection=wcs_out)
+        self.ax = plt.subplot(projection=wcs_out)
 
-        ax.imshow(array, cmap='Greys', origin='lower', norm=norm)
-        ax.set_xlabel('Right Ascension', fontsize=15)
-        ax.set_ylabel('Declination', fontsize=15)
-        ax.grid(color='white', ls='solid', b=True)
+        self.ax.imshow(array, cmap='Greys', origin='lower', norm=norm)
+        self.ax.set_xlabel('Right Ascension', fontsize=15)
+        self.ax.set_ylabel('Declination', fontsize=15)
+        self.ax.grid(color='white', ls='solid', b=True)
+
+        self.annotation = self.ax.annotate(
+            text='',
+            xy=(0, 0),
+            xytext=(7, 7), # distance from x, y
+            textcoords='offset points',
+            bbox={'boxstyle': 'round', 'fc': 'w'},
+            arrowprops={'arrowstyle': '->'},
+            xycoords='axes fraction'
+        )
+        self.annotation.set_visible(False)
+
+        self.targets = []
 
 
-        for sky in skys:
-            ax.plot(sky.coords.ra.value, sky.coords.dec.value, 
+        for sky in self.skys:
+            target = self.ax.plot(sky.coords.ra.value, sky.coords.dec.value, 
                     '+', color='blue', mfc='None', 
-                    transform=ax.get_transform('world'), 
+                    transform=self.ax.get_transform('world'), 
                     ms=20, mew=0.5) # Center marker
             
-        add_scalebar(ax, label="1'", length=1 * u.arcmin, 
+            self.targets.append(target[0])
+            
+        add_scalebar(self.ax, label="1'", length=1 * u.arcmin, 
                      color='black', label_top=True)
-
-        arrow_up = FancyArrowPatch((10, 10), (10, 70),
-                                color='black', arrowstyle='->',
-                                mutation_scale=15, linewidth=1.5)
-        ax.add_patch(arrow_up)
-        ax.text(10, 72, 'N', ha='center', va='bottom', 
-                fontsize=15, weight='bold')
-
-
-        arrow_right = FancyArrowPatch((10, 10), (70, 10),
-                                    color='black', arrowstyle='->',
-                                    mutation_scale=15, linewidth=1.5)
-        ax.add_patch(arrow_right)
-        ax.text(72, 10, 'E', ha='left', va='center', 
-                fontsize=15, weight='bold')
     
-
-        self.figure.add_subplot(ax)
+        self.figure.add_subplot(self.ax)
 
         self.canvas.draw()
 
         self.update_progbar((100, "Successfully plotted mosaic."))
         print("Succesfully plotted mosaic.")
+
+    def motion_hover(self, event):
+        annotation_visibility = self.annotation.get_visible()
+        if event.inaxes == self.ax:
+            for sky, target_obj in zip(self.skys, self.targets):  # Loop through each sky and its target
+                is_contained, _ = target_obj.contains(event)
+                if is_contained:
+
+                    # Access the corresponding date
+                    hovered_date = sky.date.value
+
+                    # Format the annotation text with the date
+                    text_label = f"{hovered_date}"
+                    self.annotation.set_text(text_label)
+                    
+                    self.annotation.set_visible(True)
+                    self.canvas.draw_idle()
+                    return  # Exit after processing the first valid hover point
+            
+            # If no point is hovered, hide the annotation
+            if annotation_visibility:
+                self.annotation.set_visible(False)
+                self.canvas.draw_idle()
 
 
     def single_plot(self, info):
@@ -808,33 +832,33 @@ class MainWindow(QMainWindow):
 
         norm = simple_norm(info['data'], 'sqrt', percent=99.)
 
-        ax = plt.subplot(projection=info['wcs'])
+        self.ax = plt.subplot(projection=info['wcs'])
 
-        ax.imshow(info['data'], cmap='Greys', origin='lower', norm=norm)
-        ax.set_xlabel('Right Ascension', fontsize=15)
-        ax.set_ylabel('Declination', fontsize=15)
-        ax.grid(color='white', ls='solid', b=True)
+        self.ax.imshow(info['data'], cmap='Greys', origin='lower', norm=norm)
+        self.ax.set_xlabel('Right Ascension', fontsize=15)
+        self.ax.set_ylabel('Declination', fontsize=15)
+        self.ax.grid(color='white', ls='solid', b=True)
 
-        ax.plot(info['ra'], info['dec'], '+', color='blue', mfc='None', 
-                    transform=ax.get_transform('world'), 
+        self.ax.plot(info['ra'], info['dec'], '+', color='blue', mfc='None', 
+                    transform=self.ax.get_transform('world'), 
                     ms=20, mew=0.5) # Center marker
         
-        add_scalebar(ax, label="1'", length=1 * u.arcmin, 
+        add_scalebar(self.ax, label="1'", length=1 * u.arcmin, 
                      color='black', label_top=True)
         
         arrow_up = FancyArrowPatch((10, 10), (10, 70),
                                 color='black', arrowstyle='->',
                                 mutation_scale=15, linewidth=1.5)
-        ax.add_patch(arrow_up)
-        ax.text(10, 72, 'N', ha='center', va='bottom', 
+        self.ax.add_patch(arrow_up)
+        self.ax.text(10, 72, 'N', ha='center', va='bottom', 
                 fontsize=15, weight='bold')
 
 
         arrow_right = FancyArrowPatch((10, 10), (70, 10),
                                     color='black', arrowstyle='->',
                                     mutation_scale=15, linewidth=1.5)
-        ax.add_patch(arrow_right)
-        ax.text(72, 10, 'E', ha='left', va='center', 
+        self.ax.add_patch(arrow_right)
+        self.ax.text(72, 10, 'E', ha='left', va='center', 
                 fontsize=15, weight='bold')
 
         
@@ -844,7 +868,7 @@ class MainWindow(QMainWindow):
         
         fov.on_changed(self.rotate)
         
-        self.figure.add_subplot(ax)
+        self.figure.add_subplot(self.ax)
 
         self.canvas.draw()
 
