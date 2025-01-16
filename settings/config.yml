@@ -1,0 +1,46 @@
+SDSS16:
+  id: V/154
+  ra: RA_ICRS
+  dec: DE_ICRS
+  field_id: fieldID
+  obj_id: objID
+  g: gmag
+  u: umag
+  r: rmag
+  i: imag
+  z: zmag
+
+2MASS:
+  id: II/246/out
+  source_id: 2MASS
+  ra: RAJ2000
+  dec: DEJ2000
+  h: Hmag
+  j: Jmag
+  k: Kmag
+  b: Bmag
+  r: Rmag
+
+2MASS_6X:
+  id: II/281/2mass6x
+  ra: RAJ2000
+  dec: DEJ2000
+  h: Hmag
+  j: Jmag
+  k: Kmag
+  b: Bmag
+  r: Rmag
+
+FOV:
+  bg: 8
+  fors2_std: 7.1
+  fors2_hres: 4.25
+  muse_wfm: 1
+  muse_nfm: 0.125
+
+HIPS_SURVEY:
+  dss2red: CDS/P/DSS2/red
+  dss2blue: CDS/P/DSS2/blue
+  sdssg: DS/P/HLA/SDSSg
+  sdssr: CDS/P/HLA/SDSSr
+  sdssz: CDS/P/HLA/SDSSz

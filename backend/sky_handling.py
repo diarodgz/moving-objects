@@ -108,7 +108,7 @@ def get_img(fov, ra, dec):
         coord = SkyCoord(f"{ra} {dec}", unit=(u.hourangle, u.deg), frame='icrs')
 
         query_params = { 
-         'hips': 'DSS',
+         'hips': 'CDS/P/HLA/SDSSg',
          'ra': coord.ra.value,
          'dec': coord.dec.value,
          'fov': (fov * u.arcmin).to(u.deg).value, # Consider reducing the FOV by half.
