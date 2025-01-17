@@ -29,8 +29,11 @@ from matplotlib.patches import FancyArrowPatch, Rectangle
 from astropy.visualization import (MinMaxInterval, SqrtStretch, AsinhStretch,
                                    ImageNormalize, LogStretch, simple_norm)
 import astropy.units as u
+import yaml
 
-
+config_path = os.path.join('settings', 'config.yml')
+with open(config_path, 'r') as f:
+    config = yaml.safe_load(f)
 
 class MainWindow(QMainWindow):
 
@@ -57,7 +60,7 @@ class MainWindow(QMainWindow):
 
         self.central_widget = QWidget()
 
-        self.title = QLabel("Claudia's Moving Object Tool", self)
+        self.title = QLabel("Moving Object Tool", self)
         self.title.setStyleSheet("font: bold 30px")
 
         self.from_label = QLabel('Start Date - Time', self)
@@ -86,13 +89,22 @@ class MainWindow(QMainWindow):
         self.cat_label = QLabel('Catalog', self)
 
         self.cat_cbox = QComboBox()
-        self.instruments = [
+        self.cats= [
             "SDSS16",
             "2MASS",
             "2MASS 6X"
         ]
 
-        self.cat_cbox.addItems(self.instruments)
+        self.cat_cbox.addItems(self.cats)
+
+        # HIPS Survey scroll menu
+        self.hips_label = QLabel('HIPS Survey', self)
+        self.hips = [
+            key for key in config['HIPS_SURVEY'].keys()
+        ]
+        self.hips_cbox = QComboBox()
+        self.hips_cbox.addItems(self.hips)
+        self.hips_cbox.setCurrentIndex(1)
 
         # Step scroll menu.
         self.step_cbox = QComboBox()
@@ -426,12 +438,14 @@ class MainWindow(QMainWindow):
         self.info_vbox5.addWidget(self.inst_label)
         self.info_vbox5.addWidget(self.cat_label)
         self.info_vbox5.addWidget(self.center_label)
+        self.info_vbox5.addWidget(self.hips_label)
 
         # Updating vbox 6.
 
         self.info_vbox6.addWidget(self.inst_cbox, alignment=Qt.AlignCenter)
         self.info_vbox6.addWidget(self.cat_cbox, alignment=Qt.AlignCenter)
         self.info_vbox6.addWidget(self.date_cbox, alignment=Qt.AlignCenter)
+        self.info_vbox6.addWidget(self.hips_cbox, alignment=Qt.AlignCenter)
 
         # Main central box layout init
         self.start_hbox = QHBoxLayout()
@@ -558,8 +572,8 @@ class MainWindow(QMainWindow):
             inputs['inst'] = self.inst_cbox.currentText()
             #inputs['rot'] = (self.rotate_inp.text(), self.rot_u.currentText())
             inputs['cat'] = (self.cat_cbox.currentText())
+            inputs['hips'] = (self.hips_cbox.currentText())
 
-            print(inputs)
             self.signal_valid_input.emit(inputs)
 
         elif self.coord_button.isChecked():
@@ -573,7 +587,8 @@ class MainWindow(QMainWindow):
                 'dec': dec,
                 'inst': self.inst_cbox.currentText(),
                 #'rot': (self.rotate_inp.text(), self.rot_u.currentText()),
-                'cat': self.cat_cbox.currentText()
+                'cat': self.cat_cbox.currentText(),
+                'hips': self.hips_cbox.currentText()
             }
 
             print(inputs)
@@ -595,7 +610,8 @@ class MainWindow(QMainWindow):
                 'step_u': self.step_cbox.currentText(),
                 'n_result': self.num_inp.text(),
                 #'rot': (self.rotate_inp.text(), self.rot_u.currentText()),
-                'cat': self.cat_cbox.currentText()
+                'cat': self.cat_cbox.currentText(),
+                'hips': self.hips_cbox.currentText()
             }
 
             self.signal_valid_input.emit(inputs)
@@ -764,6 +780,8 @@ class MainWindow(QMainWindow):
         self.ax.set_xlabel('Right Ascension', fontsize=15)
         self.ax.set_ylabel('Declination', fontsize=15)
         self.ax.grid(color='white', ls='solid', b=True)
+        add_scalebar(self.ax, label="1'", length=1 * u.arcmin, 
+                     color='black', label_top=True)
 
         self.annotation = self.ax.annotate(
             text='',
@@ -786,9 +804,6 @@ class MainWindow(QMainWindow):
                     ms=20, mew=0.5) # Center marker
             
             self.targets.append(target[0])
-            
-        add_scalebar(self.ax, label="1'", length=1 * u.arcmin, 
-                     color='black', label_top=True)
     
         self.figure.add_subplot(self.ax)
 

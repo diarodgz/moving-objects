@@ -6,6 +6,12 @@ from urllib.parse import urlencode
 from urllib.parse import quote
 from regions import CircleSkyRegion
 import backend.variables as v
+import os
+import yaml
+
+config_path = os.path.join('settings', 'config.yml')
+with open(config_path, 'r') as f:
+    config = yaml.safe_load(f)
 
 
 '''
@@ -15,7 +21,7 @@ and store their respective data.
 
 
 class Sky:
-    def __init__(self, num: int, result, coords, date):
+    def __init__(self, num: int, result, coords, date, catalog, hips, fov):
         
         '''
         A class for storing important information about each sky region.
@@ -28,6 +34,9 @@ class Sky:
         result: astroquery.utils.TableList object. Contains the initial result of the query.
         coords: astropy.coordinates.SkyCoord object.
         date: astopy.time.Time object.
+        catalog: str, ID of CDS catalog to use.
+        hips: str, ID of HIPS image survey to use.
+        fovt: int, FOV of the instrument in arcmin.
         self.sources: Astropy table with filtered results. Astropy Table.
         self.source_ra: Iterable that contains the RA coordinates of ALL self.sources (deg)
         self.source_de: Iterable that contains the DEC coordinates of ALL self.sources (deg)
@@ -43,7 +52,10 @@ class Sky:
         self.num = num 
         self.result = result
         self.coords = coords
-        self.date = date 
+        self.date = date
+        self.catalog = catalog
+        self.hips = hips
+        self.fov = fov
         self.sources = None
         self.source_ra = [] 
         self.source_de = [] 
@@ -61,7 +73,9 @@ class Sky:
         Takes itself and filters through the repeated detections by using the first field ID.
         Stores the filtered results to the attribute self.sources
         '''
-        detec_mask = (self.result[0]['fieldID'] == self.result[0]['fieldID'][0])
+
+        s_id = config['CATALOG'][self.catalog]['source_id']
+        detec_mask = (self.result[0][s_id] == self.result[0][s_id][0])
         source_table = self.result[0][detec_mask]
         self.sources = source_table
         
@@ -71,7 +85,10 @@ class Sky:
         self.source_ra and self.source_de to be able to plot them later.
         '''
 
-        for RA, DEC in zip(self.sources['RA_ICRS'], self.sources['DE_ICRS']):
+        self.ra_key = config['CATALOG'][self.catalog]['ra']
+        self.dec_key = config['CATALOG'][self.catalog]['dec']
+
+        for RA, DEC in zip(self.sources[self.ra_key], self.sources[self.dec_key]):
             c_source = SkyCoord(f'{RA} {DEC}', frame='icrs', unit=(u.deg, u.deg))
             self.source_ra.append(c_source.ra.value)
             self.source_de.append(c_source.dec.value)
@@ -87,10 +104,10 @@ class Sky:
         '''
 
         query_params = { 
-         'hips': 'DSS',
+         'hips': config['HIPS_SURVEY'][self.hips],
          'ra': self.coords.ra.value, 
          'dec': self.coords.dec.value, 
-         'fov': (v.bg_fov * u.arcmin).to(u.deg).value, # Consider reducing the FOV by half.
+         'fov': (config['BG_FOV'] * u.arcmin).to(u.deg).value, # Consider reducing the FOV by half.
          'width': 1000, 
          'height': 1000 
      }   
@@ -124,11 +141,11 @@ class Sky:
 
         # Handling multiple detections
         if len(brightest) > 0:
-            ra_brite, dec_brite = brightest['RA_ICRS'][0], brightest['DE_ICRS'][0]
+            ra_brite, dec_brite = brightest[self.ra_key][0], brightest[self.dec_key][0]
             # Magnitude of brightest object in the sky.
             b_gmag = brightest['gmag'][0]
         else:
-            ra_brite, dec_brite = brightest['RA_ICRS'], brightest['DE_ICRS']
+            ra_brite, dec_brite = brightest[self.ra_key], brightest[self.dec_key]
             b_gmag = brightest['gmag']
 
         # Distance from target.

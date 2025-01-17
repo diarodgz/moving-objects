@@ -8,7 +8,12 @@ import astropy.units as u
 from astropy.io import fits
 from astropy.wcs import WCS
 from urllib.parse import urlencode
+import yaml
+import os
 
+config_path = os.path.join('settings', 'config.yml')
+with open(config_path, 'r') as f:
+    config = yaml.safe_load(f)
 
 
 def query(id, start_from, step, num_results, t_start, t_end):
@@ -35,7 +40,7 @@ def query(id, start_from, step, num_results, t_start, t_end):
     return eph_req
 
     
-def sky_init(eph, fov):
+def sky_init(eph, fov, hips, catalog, filter):
     '''
     Creates a sky object for each region of the sky that the object will pass through
     acccording the requested ephemeris files.
@@ -48,11 +53,11 @@ def sky_init(eph, fov):
 
     for RA, DEC, date in tqdm(zip(eph['RA'], eph['Dec'], eph['Date']), total=len(eph)):
         c = SkyCoord(ra=RA*u.degree, dec=DEC*u.degree, frame='icrs')
-        v = Vizier(catalog='V/154', keywords=['optical'], row_limit=-1, columns=['all'],
-                   column_filters={"gmag":"<21"}) # SDSS16
+        v = Vizier(catalog=catalog, row_limit=-1, columns=['all'],
+                   column_filters=filter) # SDSS16
         result = v.query_region(coordinates=c, width=Angle(fov, u.arcminute), 
                                 height=Angle(fov, u.arcminute), frame='icrs')
-        sky = Sky(i, result, c, date)
+        sky = Sky(i, result, c, date, catalog, hips, fov)
         skys.append(sky)
         i += 1
         
@@ -108,7 +113,7 @@ def get_img(fov, ra, dec):
         coord = SkyCoord(f"{ra} {dec}", unit=(u.hourangle, u.deg), frame='icrs')
 
         query_params = { 
-         'hips': 'CDS/P/HLA/SDSSg',
+         'hips': 'DSS',
          'ra': coord.ra.value,
          'dec': coord.dec.value,
          'fov': (fov * u.arcmin).to(u.deg).value, # Consider reducing the FOV by half.

@@ -9,6 +9,11 @@ from reproject.mosaicking import reproject_and_coadd, find_optimal_celestial_wcs
 from backend.ob import read_ob, read_eph, process_eph, process_desc
 import astropy.units as u
 import os
+import yaml
+
+config_path = os.path.join('settings', 'config.yml')
+with open(config_path, 'r') as f:
+    config = yaml.safe_load(f)
 
 class BackThread(QThread):
     '''
@@ -74,7 +79,7 @@ class Backend(QObject):
     signal_skyfov =pyqtSignal(int, int, int)
 
     def __init__(self, inst=None, rot=None, cat=None, validated=None, skys=None,
-                 fov=None):
+                 fov=None, hips=None):
         super().__init__()
         self.validated = True
         self.inst = None
@@ -83,6 +88,7 @@ class Backend(QObject):
         self.cat = None
         self.thread = None
         self.skys = None
+        self.hips = None
 
     def validation(self, inputs: dict) -> None:
 
@@ -119,7 +125,7 @@ class Backend(QObject):
 
     def validate_target(self, info, id, start, end, time_start, 
                         time_end, step, step_u, n_result,
-                        inst, cat):
+                        inst, cat, hips):
         
         '''
         Validate search by target name or ID.
@@ -183,6 +189,7 @@ class Backend(QObject):
 
             self.inst = inst
             self.cat = cat
+            self.hips = hips
 
             #self.signal_progress.emit((15, "Validated inputs..."))
             self.thread.prog = (15, "Validated inputs...")
@@ -387,16 +394,16 @@ class Backend(QObject):
 
         # Assigns FOV variable according to the chosen instrument.
 
-        for key in fovs.keys():
+        for key in config['INSTRUMENT'].keys():
             if self.inst == key:
-                self.fov = fovs[self.inst]
+                self.fov = config['INSTRUMENT'][self.inst]
 
         self.thread.prog = (25, "Generating skys...")
         #self.signal_progress.emit((25, "Generating skys..."))
         print("Generating skys...")
 
         try:
-            skys = sky_init(eph, self.fov)
+            skys = sky_init(eph, self.fov, self.hips, self.cat, config['CATALOG'][self.cat]['filter'])
         except ConnectTimeout as e:
             self.signal_error(f"Connection timeout error. {e}")
         else:
