@@ -24,7 +24,7 @@ from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as Navigatio
 from matplotlib.widgets import Slider, Button
 import matplotlib.pyplot as plt
 import astropy.units as u
-from astropy.visualization.wcsaxes import add_scalebar
+from astropy.visualization.wcsaxes import add_scalebar, Quadrangle
 from matplotlib.patches import FancyArrowPatch, Rectangle
 from astropy.visualization import (MinMaxInterval, SqrtStretch, AsinhStretch,
                                    ImageNormalize, LogStretch, simple_norm)
@@ -795,6 +795,7 @@ class MainWindow(QMainWindow):
         self.annotation.set_visible(False)
 
         self.targets = []
+        self.fovs = []
 
 
         for sky in self.skys:
@@ -804,6 +805,19 @@ class MainWindow(QMainWindow):
                     ms=20, mew=0.5) # Center marker
             
             self.targets.append(target[0])
+
+            d = (sky.fov / 2) * u.arcmin
+            d_deg = d.to(u.deg).value
+
+            anchor_ra = sky.coords.ra.value - d_deg
+            anchor_de = sky.coords.dec.value - d_deg
+
+            q = Quadrangle((anchor_ra, anchor_de)*u.deg, sky.fov*u.arcmin, sky.fov*u.arcmin,
+                    edgecolor='red', facecolor='none',
+                    transform=self.ax.get_transform('world'), linewidth=0.8, linestyle='-')
+
+            self.fovs.append(q)
+            self.ax.add_patch(q)
     
         self.figure.add_subplot(self.ax)
 
@@ -814,11 +828,12 @@ class MainWindow(QMainWindow):
 
     def motion_hover(self, event):
         annotation_visibility = self.annotation.get_visible()
+        any_hovered = False  # Flag to track if any target is hovered
+        
         if event.inaxes == self.ax:
-            for sky, target_obj in zip(self.skys, self.targets):  # Loop through each sky and its target
+            for sky, target_obj, q in zip(self.skys, self.targets, self.fovs):  # Loop through each sky, target, and quadrangle
                 is_contained, _ = target_obj.contains(event)
                 if is_contained:
-
                     # Access the corresponding date
                     hovered_date = sky.date.value
 
@@ -826,12 +841,20 @@ class MainWindow(QMainWindow):
                     text_label = f"{hovered_date}"
                     self.annotation.set_text(text_label)
                     
+                    # Update annotation position and visibility
                     self.annotation.set_visible(True)
+
+                    # Show the corresponding quadrangle
+                    q.set(visible=True)
+
                     self.canvas.draw_idle()
-                    return  # Exit after processing the first valid hover point
+                    any_hovered = True  # A target is hovered
+                else:
+                    # Hide quadrangles not hovered
+                    q.set(visible=False)
             
-            # If no point is hovered, hide the annotation
-            if annotation_visibility:
+            # If no target is hovered, hide the annotation
+            if not any_hovered and annotation_visibility:
                 self.annotation.set_visible(False)
                 self.canvas.draw_idle()
 
