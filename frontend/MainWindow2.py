@@ -77,10 +77,7 @@ class MainWindow(QMainWindow):
         # Instrument scroll menu
         self.inst_cbox = QComboBox()
         self.instruments = [
-            "FORS2_std",
-            "FORS2_hres",
-            "MUSE_wfm",
-            "MUSE_nfm"
+            key for key in config['INSTRUMENT'].keys()
         ]
 
         self.inst_cbox.addItems(self.instruments)
@@ -90,9 +87,7 @@ class MainWindow(QMainWindow):
 
         self.cat_cbox = QComboBox()
         self.cats= [
-            "SDSS16",
-            "2MASS",
-            "2MASS 6X"
+            key for key in config['CATALOG'].keys()
         ]
 
         self.cat_cbox.addItems(self.cats)
@@ -137,7 +132,7 @@ class MainWindow(QMainWindow):
             self.num_label
         ]
 
-        self.center_label = QLabel('FOV Centroid (date)', self)
+        #self.center_label = QLabel('FOV Centroid (date)', self)
 
         self.date_cbox = QComboBox()
         self.date_cbox.setPlaceholderText("FOV Center")
@@ -297,8 +292,8 @@ class MainWindow(QMainWindow):
         self.exit_button = QPushButton('Exit', self)
         self.exit_button.clicked.connect(self.exit)
 
-        self.fov_button = QPushButton('View Fov', self)
-        self.fov_button.clicked.connect(self.get_coords)
+        # self.fov_button = QPushButton('View Fov', self)
+        # self.fov_button.clicked.connect(self.get_coords)
 
         self.utc_button = QRadioButton('UTC', self)
         self.etc_button = QRadioButton('Other', self)
@@ -437,14 +432,14 @@ class MainWindow(QMainWindow):
 
         self.info_vbox5.addWidget(self.inst_label)
         self.info_vbox5.addWidget(self.cat_label)
-        self.info_vbox5.addWidget(self.center_label)
+        # self.info_vbox5.addWidget(self.center_label)
         self.info_vbox5.addWidget(self.hips_label)
 
         # Updating vbox 6.
 
         self.info_vbox6.addWidget(self.inst_cbox, alignment=Qt.AlignCenter)
         self.info_vbox6.addWidget(self.cat_cbox, alignment=Qt.AlignCenter)
-        self.info_vbox6.addWidget(self.date_cbox, alignment=Qt.AlignCenter)
+        # self.info_vbox6.addWidget(self.date_cbox, alignment=Qt.AlignCenter)
         self.info_vbox6.addWidget(self.hips_cbox, alignment=Qt.AlignCenter)
 
         # Main central box layout init
@@ -489,7 +484,7 @@ class MainWindow(QMainWindow):
         self.button_box1.addStretch(1)
         self.button_box1.addWidget(self.query_button, alignment=Qt.AlignCenter)
         self.button_box1.addWidget(self.exit_button, alignment=Qt.AlignCenter)
-        self.button_box1.addWidget(self.fov_button, alignment=Qt.AlignCenter)
+        # self.button_box1.addWidget(self.fov_button, alignment=Qt.AlignCenter)
         self.button_box1.addStretch(1)
 
         # Progress bar layout.
@@ -907,6 +902,7 @@ class MainWindow(QMainWindow):
         fov.on_changed(self.rotate)
         
         self.figure.add_subplot(self.ax)
+        self.figure.tight_layout()
 
         self.canvas.draw()
 

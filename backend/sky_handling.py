@@ -51,15 +51,27 @@ def sky_init(eph, fov, hips, catalog, filter):
     i = 0
     skys = []
 
-    for RA, DEC, date in tqdm(zip(eph['RA'], eph['Dec'], eph['Date']), total=len(eph)):
-        c = SkyCoord(ra=RA*u.degree, dec=DEC*u.degree, frame='icrs')
-        v = Vizier(catalog=catalog, row_limit=-1, columns=['all'],
-                   column_filters=filter) # SDSS16
-        result = v.query_region(coordinates=c, width=Angle(fov, u.arcminute), 
-                                height=Angle(fov, u.arcminute), frame='icrs')
-        sky = Sky(i, result, c, date, catalog, hips, fov)
-        skys.append(sky)
-        i += 1
+    if fov <= 1:
+        # Amplifies FOV by 1 arcminute to have search results.
+        for RA, DEC, date in tqdm(zip(eph['RA'], eph['Dec'], eph['Date']), total=len(eph)):
+            c = SkyCoord(ra=RA*u.degree, dec=DEC*u.degree, frame='icrs')
+            v = Vizier(catalog=catalog, row_limit=-1, columns=['all'],
+                    column_filters=filter) # SDSS16
+            result = v.query_region(coordinates=c, width=Angle(fov+1, u.arcminute), 
+                                    height=Angle(fov+1, u.arcminute), frame='icrs')
+            sky = Sky(i, result, c, date, catalog, hips, fov)
+            skys.append(sky)
+            i += 1
+    else:
+        for RA, DEC, date in tqdm(zip(eph['RA'], eph['Dec'], eph['Date']), total=len(eph)):
+            c = SkyCoord(ra=RA*u.degree, dec=DEC*u.degree, frame='icrs')
+            v = Vizier(catalog=catalog, row_limit=-1, columns=['all'],
+                    column_filters=filter) # SDSS16
+            result = v.query_region(coordinates=c, width=Angle(fov, u.arcminute), 
+                                    height=Angle(fov, u.arcminute), frame='icrs')
+            sky = Sky(i, result, c, date, catalog, hips, fov)
+            skys.append(sky)
+            i += 1
         
     return skys
 
@@ -71,8 +83,9 @@ def sky_process(skys, fov):
     for sky in tqdm(skys):
         sky.filter_detec()
         sky.store_radec()
-        sky.img_query(fov / 2) # Divided by two because the image query takes a radius.
         sky.separate()
+        sky.img_query(fov / 2) # Divided by two because the image query takes a radius.
+        
 
 
 def sky_query(coordinates, radius=None, fov=None):

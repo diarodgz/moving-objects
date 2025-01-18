@@ -415,7 +415,8 @@ class Backend(QObject):
         try:
             sky_process(skys, self.fov)
         except IndexError as e:
-            self.signal_error.emit(f"Server Error: Vizier query result empty. Try again later. {e}")
+            self.signal_error.emit(f"The catalog/image does not provide information for this object. Please select different ones.")
+            print('Empty query.')
         else:
             print("Skys processed.")
             self.thread.prog = (35, "Processed skys...")
@@ -442,8 +443,10 @@ class Backend(QObject):
         # We prepare an empty string to fill it with the brightness flags.
         b_notice = f""
 
+        mag = config['CATALOG'][self.cat]['flag']
+
         for item in b_flag:
-            b_notice += f'There is a {item["mag"]:.3f} mag source within \
+            b_notice += f'There is a {item["mag"]:.3f} {mag} source within \
 {item["dist"].to_string(unit=u.arcmin)} of the target on {item["date"]}\n'
 
         # Empty string to fill with distance info.

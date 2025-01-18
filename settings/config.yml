@@ -1,12 +1,13 @@
 CATALOG:
   SDSS16: {id: V/154, ra: RA_ICRS, dec: DE_ICRS, source_id: fieldID,
-  obj_id: objID, g: gmag, u: umag, r: rmag, i: imag, z: zmag, filter: {gmag: <21}}
+  obj_id: objID, g: gmag, u: umag, r: rmag, i: imag, z: zmag, filter: {gmag: <21},
+  flag: 'gmag'}
 
   2MASS: {id: II/246/out, source_id: _2MASS, ra: RAJ2000, dec: DEJ2000,
-  h: Hmag, j: Jmag, k: Kmag, b: Bmag, r: Rmag, filter: {Hmag: <20}}
+  h: Hmag, j: Jmag, k: Kmag, b: Bmag, r: Rmag, filter: {Hmag: <20}, flag: Hmag}
 
   2MASS_6X: {id: II/281/2mass6x, source_id: _ß2MASS, ra: RAJ2000, dec: DEJ2000, h: Hmag, j: Jmag,
-  k: Kmag, b: Bmag, r: Rmag, filter: {Hmag: <20}}
+  k: Kmag, b: Bmag, r: Rmag, filter: {Hmag: <20}, flag: Hmag}
 
 BG_FOV: 8
 

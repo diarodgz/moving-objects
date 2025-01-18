@@ -48,6 +48,7 @@ class Sky:
         self.pix_region: regions.CircleSkyRegion object converted to pixels.
         self.img_data: 2D array of the image data from the FITS file.
         self.hdu: HDU object of the sky FITS file. 
+        self.no_sources: boolean, determines whether or not there are any sources detected in the sky based on the Vizier query results.
         '''
         self.num = num 
         self.result = result
@@ -66,7 +67,8 @@ class Sky:
         self.flagged_de = [] 
         self.pix_region = None 
         self.img_data = None
-        self.hdu = None 
+        self.hdu = None
+        self.no_sources = False
         
     def filter_detec(self):
         '''
@@ -74,10 +76,13 @@ class Sky:
         Stores the filtered results to the attribute self.sources
         '''
 
-        s_id = config['CATALOG'][self.catalog]['source_id']
-        detec_mask = (self.result[0][s_id] == self.result[0][s_id][0])
-        source_table = self.result[0][detec_mask]
-        self.sources = source_table
+        if len(self.result) != []:
+            s_id = config['CATALOG'][self.catalog]['source_id']
+            detec_mask = (self.result[0][s_id] == self.result[0][s_id][0])
+            source_table = self.result[0][detec_mask]
+            self.sources = source_table
+        else:
+            self.no_sources = True
         
     def store_radec(self):
         '''
@@ -133,20 +138,20 @@ class Sky:
         top_5 = []
     
         # Allow option to search through each magnitude.
-        mags = ['umag', 'gmag', 'rmag', 'imag', 'zmag']
+        mag = config['CATALOG'][self.catalog]['flag']
 
         # Brightest source in optical wavelength.
-        b_mask = self.sources['gmag'] == min(self.sources['gmag'])
+        b_mask = self.sources[mag] == min(self.sources[mag])
         brightest = self.sources[b_mask]
 
         # Handling multiple detections
         if len(brightest) > 0:
             ra_brite, dec_brite = brightest[self.ra_key][0], brightest[self.dec_key][0]
             # Magnitude of brightest object in the sky.
-            b_gmag = brightest['gmag'][0]
+            b_mag = brightest[mag][0]
         else:
             ra_brite, dec_brite = brightest[self.ra_key], brightest[self.dec_key]
-            b_gmag = brightest['gmag']
+            b_mag = brightest[mag]
 
         # Distance from target.
         c_source = SkyCoord(f'{ra_brite} {dec_brite}', unit=(u.deg, u.deg), frame='icrs')
@@ -154,7 +159,7 @@ class Sky:
         b_dist = c_source.separation(self.coords)
 
         info = {
-            'mag': b_gmag,
+            'mag': b_mag,
             'ra': ra_brite,
             'dec': dec_brite,
             'dist': b_dist,
