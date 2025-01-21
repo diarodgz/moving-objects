@@ -53,6 +53,7 @@ def sky_init(eph, fov, hips, catalog, filter):
 
     if fov <= 1:
         # Amplifies FOV by 1 arcminute to have search results.
+        print(f'Using small FOV {fov}... Amplifying by 1 arcmin.')
         for RA, DEC, date in tqdm(zip(eph['RA'], eph['Dec'], eph['Date']), total=len(eph)):
             c = SkyCoord(ra=RA*u.degree, dec=DEC*u.degree, frame='icrs')
             v = Vizier(catalog=catalog, row_limit=-1, columns=['all'],
@@ -66,7 +67,7 @@ def sky_init(eph, fov, hips, catalog, filter):
         for RA, DEC, date in tqdm(zip(eph['RA'], eph['Dec'], eph['Date']), total=len(eph)):
             c = SkyCoord(ra=RA*u.degree, dec=DEC*u.degree, frame='icrs')
             v = Vizier(catalog=catalog, row_limit=-1, columns=['all'],
-                    column_filters=filter) # SDSS16
+                    column_filters=filter) 
             result = v.query_region(coordinates=c, width=Angle(fov, u.arcminute), 
                                     height=Angle(fov, u.arcminute), frame='icrs')
             sky = Sky(i, result, c, date, catalog, hips, fov)
@@ -82,9 +83,13 @@ def sky_process(skys, fov):
     '''
     for sky in tqdm(skys):
         sky.filter_detec()
-        sky.store_radec()
-        sky.separate()
+        if not sky.no_sources:
+            sky.store_radec()
+            sky.separate()
+        
+        print(f'Sky {sky.num} has no sources: {sky.no_sources}')
         sky.img_query(fov / 2) # Divided by two because the image query takes a radius.
+
         
 
 
@@ -151,6 +156,50 @@ def get_img(fov, ra, dec):
         
         return info
 
+def flags(skys, cat):
+
+    print("Flagging bright objects...")
+    b_flag = list(map(lambda sky: sky.flag_bright() if not sky.no_sources else 'no sources', skys)) # Flags bright objects.
+        
+    print("Flagging objects within 0.5 arcmin...")
+    dist_flag = list(map(lambda sky: sky.flag_dist(0.5 * u.arcmin) if not sky.no_sources else 'no sources', skys)) # Flags objects within a 0.5' radius.
+
+    # We prepare an empty string to fill it with the brightness flags.
+    b_notice = f""
+
+    mag = config['CATALOG'][cat]['flag']
+
+    for item in b_flag: # Goes through each flagged source for each patch of sky 
+        if item is not 'no sources': # Make sure that the sky isn't empty.
+            b_notice += f'There is a {item["mag"]:.3f} {mag} source within \
+    {item["dist"].to_string(unit=u.arcmin)} of the target on {item["date"]}\n'
+
+    # Empty string to fill with distance info.
+    dist_notice = f""
+
+    # Filling empty string with information about distances.
+    for item in dist_flag:
+        if item is not 'no sources':
+            dist_notice += f'There are {item["flagged"]} sources within \
+    {item["thresh"]} of the target on {item["date"]}\n'
+            
+    return b_notice, dist_notice
+
+def best_seen(skys):
+    best_dates = []
+
+    for sky in skys:
+        flag = sky.flag_bright()
+        if flag == 'no sources' or flag['dist'] >= 1 * u.arcmin:
+            best_dates.append(sky)
+        else:
+            pass
+    
+    if best_dates != []:
+        return f'The object is best seen from \
+{best_dates[0].date.value} to {best_dates[len(best_dates) - 1].date.value}'
+    else:
+        return f'The object is best seen from dates before {skys[0].date.value} and after {skys[len(skys)-1].date.value}'
 
 # METHODS WILL NOW REQUIRE A PARAMETER CALLED "FOV" !!! ADJUST ACCORDINGLY
 # NOTES:

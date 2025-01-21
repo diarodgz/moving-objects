@@ -76,7 +76,7 @@ class Sky:
         Stores the filtered results to the attribute self.sources
         '''
 
-        if len(self.result) != []:
+        if self.result != []:
             s_id = config['CATALOG'][self.catalog]['source_id']
             detec_mask = (self.result[0][s_id] == self.result[0][s_id][0])
             source_table = self.result[0][detec_mask]
@@ -134,39 +134,43 @@ class Sky:
         found, and how far it is from the moving object, which band it's brightest in.
         '''
         
-        # Search for top 5.
-        top_5 = []
-    
-        # Allow option to search through each magnitude.
-        mag = config['CATALOG'][self.catalog]['flag']
+        if not self.no_sources: # If there are not detected sources in this sky patch, do not flag.
+            # Search for top 5.
+            top_5 = []
+        
+            # Allow option to search through each magnitude.
+            mag = config['CATALOG'][self.catalog]['flag']
 
-        # Brightest source in optical wavelength.
-        b_mask = self.sources[mag] == min(self.sources[mag])
-        brightest = self.sources[b_mask]
+            # Brightest source in optical wavelength.
+            b_mask = self.sources[mag] == min(self.sources[mag])
+            brightest = self.sources[b_mask]
 
-        # Handling multiple detections
-        if len(brightest) > 0:
-            ra_brite, dec_brite = brightest[self.ra_key][0], brightest[self.dec_key][0]
-            # Magnitude of brightest object in the sky.
-            b_mag = brightest[mag][0]
+            # Handling multiple detections
+            if len(brightest) > 0:
+                ra_brite, dec_brite = brightest[self.ra_key][0], brightest[self.dec_key][0]
+                # Magnitude of brightest object in the sky.
+                b_mag = brightest[mag][0]
+            else:
+                ra_brite, dec_brite = brightest[self.ra_key], brightest[self.dec_key]
+                b_mag = brightest[mag]
+
+            # Distance from target.
+            c_source = SkyCoord(f'{ra_brite} {dec_brite}', unit=(u.deg, u.deg), frame='icrs')
+
+            b_dist = c_source.separation(self.coords)
+
+            info = {
+                'mag': b_mag,
+                'ra': ra_brite,
+                'dec': dec_brite,
+                'dist': b_dist,
+                'date': self.date
+            }
+
+            return info
         else:
-            ra_brite, dec_brite = brightest[self.ra_key], brightest[self.dec_key]
-            b_mag = brightest[mag]
-
-        # Distance from target.
-        c_source = SkyCoord(f'{ra_brite} {dec_brite}', unit=(u.deg, u.deg), frame='icrs')
-
-        b_dist = c_source.separation(self.coords)
-
-        info = {
-            'mag': b_mag,
-            'ra': ra_brite,
-            'dec': dec_brite,
-            'dist': b_dist,
-            'date': self.date
-        }
-
-        return info
+            print(f'Sky at {self.date.value} has no sources.')
+            return 'no sources'
     
     def flag_dist(self, thresh):
         '''
@@ -190,8 +194,8 @@ class Sky:
             if flagged:
                 self.flagged_ra.append(self.source_ra[n])
                 self.flagged_de.append(self.source_de[n])
-                
-        self.pixel_region = sky_region.to_pixel(self.wcs)
+        
+        self.pix_region = sky_region.to_pixel(self.wcs)
 
         info = {
             'thresh': thresh,

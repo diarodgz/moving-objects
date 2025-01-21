@@ -16,7 +16,9 @@ from PyQt5.QtWidgets import (
     QRadioButton,
     QProgressBar,
     QButtonGroup,
-    QSlider
+    QSlider,
+    QListWidget,
+    QScrollBar
 )
 
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
@@ -115,8 +117,8 @@ class MainWindow(QMainWindow):
         self.bright_label = QLabel('Brightest objects:', self)
         self.brightest_label = QLabel('', self)
 
-        self.nearby_label = QLabel('Sources nearby:', self)
-        self.dist_label = QLabel('', self)
+        #self.nearby_label = QLabel('Sources nearby:', self)
+        #self.dist_label = QLabel('', self)
 
 
         self.time_dot1 = QLabel(':', self)
@@ -131,11 +133,6 @@ class MainWindow(QMainWindow):
             self.step_label,
             self.num_label
         ]
-
-        #self.center_label = QLabel('FOV Centroid (date)', self)
-
-        self.date_cbox = QComboBox()
-        self.date_cbox.setPlaceholderText("FOV Center")
         
         
         # Target identifier buttons.
@@ -279,8 +276,8 @@ class MainWindow(QMainWindow):
             self.s_dec
         ]
 
-        self.op_datetime = QLabel('BEST SEEN:', self) # Label for best dates
-        self.op_datetime.setStyleSheet('font: bold 15px')
+        self.best_seen = QLabel('BEST SEEN:', self) # Label for best dates
+        self.best_seen.setStyleSheet('font: bold 15px')
 
         # Progress bar
         self.prog_bar = QProgressBar(self)
@@ -329,6 +326,15 @@ class MainWindow(QMainWindow):
         # Adding title widgets to the title layout
         self.title_box.addWidget(self.title, alignment=Qt.AlignCenter)
         self.title_box.addStretch(1)
+
+        # Scrollbox that contains information pertaining to bright and nearby sources
+        # self.list_widget = QListWidget(self)
+
+        # self.scrollbar = QScrollBar(self)
+        # self.scrollbar.setMaximum(self.list_widget.count())
+        # self.scrollbar.sliderMoved.connect(self.list_widget.setCurrentRow)
+
+        # self.list_widget.addItem('Information will go here...')
 
         # Init layouts for user input
         self.info_vbox1 = QVBoxLayout()
@@ -505,11 +511,12 @@ class MainWindow(QMainWindow):
         
         plot_info.addLayout(self.prog_hbox)
         plot_info.addWidget(self.results_label, alignment=Qt.AlignCenter)
-        plot_info.addWidget(self.op_datetime, alignment=Qt.AlignCenter)
+        plot_info.addWidget(self.best_seen, alignment=Qt.AlignCenter)
+        # plot_info.addWidget(self.list_widget, alignment=Qt.AlignCenter)
         plot_info.addWidget(self.bright_label, alignment=Qt.AlignCenter)
         plot_info.addWidget(self.brightest_label, alignment=Qt.AlignCenter)
-        plot_info.addWidget(self.nearby_label, alignment=Qt.AlignCenter)
-        plot_info.addWidget(self.dist_label)
+        #plot_info.addWidget(self.nearby_label, alignment=Qt.AlignCenter)
+        #plot_info.addWidget(self.dist_label)
 
         results = QHBoxLayout()
         results.addLayout(plot)
@@ -951,17 +958,17 @@ class MainWindow(QMainWindow):
         '''
         
         self.brightest_label.setText(b_notice)
-        self.dist_label.setText(dist_notice)
+        #self.dist_label.setText(dist_notice)
 
-    def update_datebox(self, dates: list):
-        '''
-        Returns None.
+    # def update_datebox(self, dates: list):
+        # '''
+        # Returns None.
 
-        Updates the QComboBox that holds the dates to 
-        place the FOV rectangle.
-        '''
+        # Updates the QComboBox that holds the dates to 
+        # place the FOV rectangle.
+        # '''
 
-        self.date_cbox.addItems(dates)
+        #self.date_cbox.addItems(dates)
 
     def get_coords(self):
 

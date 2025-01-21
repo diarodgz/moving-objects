@@ -1,4 +1,4 @@
-from backend.sky_handling import query, sky_process, sky_init, get_img
+from backend.sky_handling import query, sky_process, sky_init, get_img, best_seen, flags
 from PyQt5.QtCore import pyqtSignal, QObject, QThread
 from datetime import datetime
 from astroquery.exceptions import InvalidQueryError
@@ -415,48 +415,21 @@ class Backend(QObject):
         try:
             sky_process(skys, self.fov)
         except IndexError as e:
-            self.signal_error.emit(f"The catalog/image does not provide information for this object. Please select different ones.")
+            self.signal_error.emit(f"The catalog/image does not provide information for this object. Please select a different one.")
             print('Empty query.')
         else:
             print("Skys processed.")
             self.thread.prog = (35, "Processed skys...")
             #self.signal_progress.emit((35, "Processed skys..."))
             self.send_mosaic(skys)
-            self.flagging(skys)
+            self.flagging(skys, self.cat)
             self.signal_dates.emit([sky.date.value for sky in skys])
             self.skys = skys
 
 
-    def flagging(self, skys: list):
+    def flagging(self, skys: list, cat):
         
-        print("Flagging bright objects...")
-        self.thread.prog = (40, "Flagging bright objects...")
-        #self.signal_progress.emit((40, "Flagging bright objects..."))
-
-        b_flag = list(map(lambda x: x.flag_bright(), skys))
-        
-        print("Flagging objects within 0.5 arcmin...")
-        self.thread.prog = (45, "Flagging objects within 0.5 arcmin...")
-        #self.signal_progress.emit((45, "Flagging objects within 0.5 arcmin..."))
-        dist_flag = list(map(lambda x: x.flag_dist(0.5 * u.arcmin), skys))
-
-        # We prepare an empty string to fill it with the brightness flags.
-        b_notice = f""
-
-        mag = config['CATALOG'][self.cat]['flag']
-
-        for item in b_flag:
-            b_notice += f'There is a {item["mag"]:.3f} {mag} source within \
-{item["dist"].to_string(unit=u.arcmin)} of the target on {item["date"]}\n'
-
-        # Empty string to fill with distance info.
-        dist_notice = f""
-
-        # Filling empty string with information about distances.
-        for item in dist_flag:
-            dist_notice += f'There are {item["flagged"]} sources within \
-{item["thresh"]} of the target on {item["date"]}\n'
-
+        b_notice, dist_notice = flags(skys, cat)
         self.signal_flags.emit(b_notice, dist_notice)
 
     def get_best(self):
@@ -497,6 +470,11 @@ class Backend(QObject):
 
         self.signal_skyfov.emit(sky[0].coords.ra.value, 
                                 sky[0].coords.dec.value, self.fov)
+        
+
+    def send_best_seen(self, skys):
+        best_seen = best_seen(skys)
+        self.signal_best(best_seen)
 
 
 

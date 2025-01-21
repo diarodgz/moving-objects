@@ -29,7 +29,7 @@ if __name__ == '__main__':
     back.signal_splot.connect(front.single_plot)
     back.signal_progress.connect(front.update_progbar)
     back.signal_flags.connect(front.update_flags)
-    back.signal_dates.connect(front.update_datebox)
+    # back.signal_dates.connect(front.update_datebox)
     front.signal_date.connect(back.send_skyfov)
     back.signal_skyfov.connect(front.plot_fov)
 
