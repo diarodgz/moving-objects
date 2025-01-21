@@ -16,6 +16,7 @@ INSTRUMENT:
   FORS2_hres: 4.25
   MUSE_wfm: 1
   MUSE_nfm: 0.125
+  HAWK-I: 7.5
 
 HIPS_SURVEY:
   DSS2red: CDS/P/DSS2/red

@@ -111,17 +111,11 @@ class Backend(QObject):
         print("Validating inputs...")
 
         if inputs['info'] == 'targ':
-            
             self.validate_target(**inputs)
-
         elif inputs['info'] == 'coords':
-
             self.validate_coords(**inputs)
-
         elif inputs['info'] == 'ob':
-
             self.validate_ob(**inputs)
-
 
     def validate_target(self, info, id, start, end, time_start, 
                         time_end, step, step_u, n_result,
@@ -424,6 +418,7 @@ class Backend(QObject):
             self.send_mosaic(skys)
             self.flagging(skys, self.cat)
             self.signal_dates.emit([sky.date.value for sky in skys])
+            self.send_best_seen(skys)
             self.skys = skys
 
 
@@ -473,8 +468,8 @@ class Backend(QObject):
         
 
     def send_best_seen(self, skys):
-        best_seen = best_seen(skys)
-        self.signal_best(best_seen)
+        best_seen_dates = best_seen(skys)
+        self.signal_best.emit(best_seen_dates)
 
 
 

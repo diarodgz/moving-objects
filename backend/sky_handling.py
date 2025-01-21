@@ -170,7 +170,7 @@ def flags(skys, cat):
     mag = config['CATALOG'][cat]['flag']
 
     for item in b_flag: # Goes through each flagged source for each patch of sky 
-        if item is not 'no sources': # Make sure that the sky isn't empty.
+        if item != 'no sources': # Make sure that the sky isn't empty.
             b_notice += f'There is a {item["mag"]:.3f} {mag} source within \
     {item["dist"].to_string(unit=u.arcmin)} of the target on {item["date"]}\n'
 

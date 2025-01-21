@@ -947,8 +947,8 @@ class MainWindow(QMainWindow):
 
         self.figure.get_axes()[0].add_patch(r)
 
-    def update_bestseen(self):
-        pass
+    def update_bestseen(self, best):
+        self.best_seen.setText(best)
 
     def update_flags(self, b_notice: str, dist_notice: str):
         '''
