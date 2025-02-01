@@ -307,6 +307,7 @@ class MainWindow(QMainWindow):
         # this is the Navigation widget
         # it takes the Canvas widget and a parent
         self.toolbar = NavigationToolbar(self.canvas, self)
+        self.ax = 'Empty'
 
         self.canvas.mpl_connect('motion_notify_event', self.motion_hover)
 
@@ -833,36 +834,40 @@ class MainWindow(QMainWindow):
         print("Succesfully plotted mosaic.")
 
     def motion_hover(self, event):
-        annotation_visibility = self.annotation.get_visible()
-        any_hovered = False  # Flag to track if any target is hovered
-        
-        if event.inaxes == self.ax:
-            for sky, target_obj, q in zip(self.skys, self.targets, self.fovs):  # Loop through each sky, target, and quadrangle
-                is_contained, _ = target_obj.contains(event)
-                if is_contained:
-                    # Access the corresponding date
-                    hovered_date = sky.date.value
 
-                    # Format the annotation text with the date
-                    text_label = f"{hovered_date}"
-                    self.annotation.set_text(text_label)
-                    
-                    # Update annotation position and visibility
-                    self.annotation.set_visible(True)
-
-                    # Show the corresponding quadrangle
-                    q.set(visible=True)
-
-                    self.canvas.draw_idle()
-                    any_hovered = True  # A target is hovered
-                else:
-                    # Hide quadrangles not hovered
-                    q.set(visible=False)
+        if self.ax != 'Empty':
+            annotation_visibility = self.annotation.get_visible()
+            any_hovered = False  # Flag to track if any target is hovered
             
-            # If no target is hovered, hide the annotation
-            if not any_hovered and annotation_visibility:
-                self.annotation.set_visible(False)
-                self.canvas.draw_idle()
+            if event.inaxes == self.ax:
+                for sky, target_obj, q in zip(self.skys, self.targets, self.fovs):  # Loop through each sky, target, and quadrangle
+                    is_contained, _ = target_obj.contains(event)
+                    if is_contained:
+                        # Access the corresponding date
+                        hovered_date = sky.date.value
+
+                        # Format the annotation text with the date
+                        text_label = f"{hovered_date}"
+                        self.annotation.set_text(text_label)
+                        
+                        # Update annotation position and visibility
+                        self.annotation.set_visible(True)
+
+                        # Show the corresponding quadrangle
+                        q.set(visible=True)
+
+                        self.canvas.draw_idle()
+                        any_hovered = True  # A target is hovered
+                    else:
+                        # Hide quadrangles not hovered
+                        q.set(visible=False)
+                
+                # If no target is hovered, hide the annotation
+                if not any_hovered and annotation_visibility:
+                    self.annotation.set_visible(False)
+                    self.canvas.draw_idle()
+        else:
+            pass
 
 
     def single_plot(self, info):
@@ -983,7 +988,7 @@ class MainWindow(QMainWindow):
             self.table.setItem(row, 1, QTableWidgetItem(f'{item["ra"]}'))
             self.table.setItem(row, 2, QTableWidgetItem(f'{item["dec"]}'))
             self.table.setItem(row, 3, QTableWidgetItem(f'{item["dist"].to(u.arcmin).value:.3f}'))
-            self.table.setItem(row, 4, QTableWidgetItem(item['date'].value.split(' ')[1].rstrip("000").rstrip(".")))
+            self.table.setItem(row, 4, QTableWidgetItem(item['date'].value.rstrip("000").rstrip(".")))
             row += 1
 
 
