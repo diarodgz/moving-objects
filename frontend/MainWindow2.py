@@ -18,7 +18,9 @@ from PyQt5.QtWidgets import (
     QButtonGroup,
     QSlider,
     QListWidget,
-    QScrollBar
+    QScrollBar,
+    QTableWidget,
+    QTableWidgetItem
 )
 
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
@@ -114,8 +116,8 @@ class MainWindow(QMainWindow):
             'font: bold 20px'
         )
 
-        self.bright_label = QLabel('Brightest objects:', self)
-        self.brightest_label = QLabel('', self)
+        #self.bright_label = QLabel('Brightest objects:', self)
+        #self.brightest_label = QLabel('', self)
 
         #self.nearby_label = QLabel('Sources nearby:', self)
         #self.dist_label = QLabel('', self)
@@ -280,7 +282,7 @@ class MainWindow(QMainWindow):
         self.best_seen.setStyleSheet('font: bold 15px')
 
         # Progress bar
-        self.prog_bar = QProgressBar(self)
+        # self.prog_bar = QProgressBar(self)
         self.prog_msg = QLabel('', self)
 
         self.query_button = QPushButton('Query', self)
@@ -497,7 +499,8 @@ class MainWindow(QMainWindow):
         self.prog_hbox = QHBoxLayout()
 
         self.prog_hbox.addWidget(self.prog_msg)
-        self.prog_hbox.addWidget(self.prog_bar)
+        # self.prog_hbox.addWidget(self.prog_bar)
+        self.create_table()
 
         # Mosaic layout.
         plot = QVBoxLayout()
@@ -512,9 +515,10 @@ class MainWindow(QMainWindow):
         plot_info.addLayout(self.prog_hbox)
         plot_info.addWidget(self.results_label, alignment=Qt.AlignCenter)
         plot_info.addWidget(self.best_seen, alignment=Qt.AlignCenter)
+        plot_info.addWidget(self.table)
         # plot_info.addWidget(self.list_widget, alignment=Qt.AlignCenter)
-        plot_info.addWidget(self.bright_label, alignment=Qt.AlignCenter)
-        plot_info.addWidget(self.brightest_label, alignment=Qt.AlignCenter)
+        # plot_info.addWidget(self.bright_label, alignment=Qt.AlignCenter)
+        #plot_info.addWidget(self.brightest_label, alignment=Qt.AlignCenter)
         #plot_info.addWidget(self.nearby_label, alignment=Qt.AlignCenter)
         #plot_info.addWidget(self.dist_label)
 
@@ -745,7 +749,7 @@ class MainWindow(QMainWindow):
         percent= prog[0]
         display = prog[1]
 
-        self.prog_bar.setValue(percent)
+        # self.prog_bar.setValue(percent)
         self.prog_msg.setText(display)
     
         
@@ -950,7 +954,7 @@ class MainWindow(QMainWindow):
     def update_bestseen(self, best):
         self.best_seen.setText(best)
 
-    def update_flags(self, b_notice: str, dist_notice: str):
+    def update_flags(self, b_notice: str):
         '''
         Returns None.
 
@@ -960,19 +964,27 @@ class MainWindow(QMainWindow):
         self.brightest_label.setText(b_notice)
         #self.dist_label.setText(dist_notice)
 
-    # def update_datebox(self, dates: list):
-        # '''
-        # Returns None.
+    def create_table(self):
 
-        # Updates the QComboBox that holds the dates to 
-        # place the FOV rectangle.
-        # '''
+        labels = [
+            'mag', 'RA (deg)', 'DEC (deg)', 'd (arcmin)', 'Time'
+        ]
+        self.table = QTableWidget()
+        self.table.setColumnCount(5)
+        self.table.setHorizontalHeaderLabels(labels)
 
-        #self.date_cbox.addItems(dates)
+    def update_table(self, content, mag):
 
-    def get_coords(self):
+        self.table.setRowCount(len(content))
 
-        self.signal_date.emit(self.date_cbox.currentText())
+        row = 0
+        for item in content:
+            self.table.setItem(row, 0, QTableWidgetItem(f'{item["mag"]:.3f}'))
+            self.table.setItem(row, 1, QTableWidgetItem(f'{item["ra"]}'))
+            self.table.setItem(row, 2, QTableWidgetItem(f'{item["dec"]}'))
+            self.table.setItem(row, 3, QTableWidgetItem(f'{item["dist"].to(u.arcmin).value:.3f}'))
+            self.table.setItem(row, 4, QTableWidgetItem(item['date'].value.split(' ')[1].rstrip("000").rstrip(".")))
+            row += 1
 
 
     def exit(self):

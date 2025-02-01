@@ -4,7 +4,7 @@ CATALOG:
   flag: 'gmag'}
 
   2MASS: {id: II/246/out, source_id: _2MASS, ra: RAJ2000, dec: DEJ2000,
-  h: Hmag, j: Jmag, k: Kmag, b: Bmag, r: Rmag, filter: {Hmag: <13}, flag: Hmag}
+  h: Hmag, j: Jmag, k: Kmag, b: Bmag, r: Rmag, filter: {Hmag: <15}, flag: Hmag}
 
   2MASS_6X: {id: II/281/2mass6x, source_id: _2MASS, ra: RAJ2000, dec: DEJ2000, h: Hmag, j: Jmag,
   k: Kmag, b: Bmag, r: Rmag, filter: {Hmag: <30}, flag: Hmag}
@@ -31,5 +31,6 @@ HIPS_SURVEY:
   2MASS6X_j: CDS/P/2MASS6X/J
   2MASS6X_k: CDS/P/2MASS6X/K
 
+OB_PATH: OB_format
 
 

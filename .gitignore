@@ -6,3 +6,4 @@ make_config.py
 tests.ipynb
 config.ini
 .DS_store
+OB_format

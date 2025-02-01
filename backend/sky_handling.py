@@ -179,7 +179,7 @@ def flags(skys, cat):
 
     # Filling empty string with information about distances.
     for item in dist_flag:
-        if item is not 'no sources':
+        if item != 'no sources':
             dist_notice += f'There are {item["flagged"]} sources within \
     {item["thresh"]} of the target on {item["date"]}\n'
             
@@ -199,9 +199,7 @@ def best_seen(skys):
         return f'The object is best seen from \
 {best_dates[0].date.value} to {best_dates[len(best_dates) - 1].date.value}'
     else:
-        return f'The object is best seen from dates before {skys[0].date.value} and after {skys[len(skys)-1].date.value}'
+        return f'The object is best seen from dates before {skys[0].date.value}\nand after {skys[len(skys)-1].date.value}'
 
-# METHODS WILL NOW REQUIRE A PARAMETER CALLED "FOV" !!! ADJUST ACCORDINGLY
 # NOTES:
-# Allow option to change catalogue?
 # Allow option to change frame?
