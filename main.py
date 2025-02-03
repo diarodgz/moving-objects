@@ -20,7 +20,7 @@ if __name__ == '__main__':
 
     # Creating an instance of the front and back end windows
     back = Backend()
-    front = MainWindow()
+    front = MainWindow(back)
 
     # Signal connecting
     front.signal_valid_input.connect(back.validation)

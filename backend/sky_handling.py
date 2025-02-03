@@ -46,6 +46,10 @@ def sky_init(eph, fov, hips, catalog, filter):
     acccording the requested ephemeris files.
 
     eph: astropy.Table that contains the requested ephemeris of the object.
+    fov: int
+    hips: str
+    catalog: str
+    filter: str
     '''
     
     i = 0
@@ -80,6 +84,8 @@ def sky_init(eph, fov, hips, catalog, filter):
 def sky_process(skys, fov):
     '''
     Receives iterable with Sky objects and applies each method.
+    skys: array of Sky objects
+    fov: int
     '''
     for sky in tqdm(skys):
         sky.filter_detec()
@@ -97,6 +103,7 @@ def sky_query(coordinates, radius=None, fov=None):
 
     '''
     Queries sky images in the given coordinates.
+    coordinates: list
     '''
 
     RA = [coordinates][0]
@@ -119,7 +126,7 @@ def sky_query(coordinates, radius=None, fov=None):
     return result
 
 
-def get_img(fov, ra, dec):
+def get_img(fov, ra, dec, hips):
     
         '''
         fov: int.
@@ -131,59 +138,53 @@ def get_img(fov, ra, dec):
         coord = SkyCoord(f"{ra} {dec}", unit=(u.hourangle, u.deg), frame='icrs')
 
         query_params = { 
-         'hips': 'DSS',
+         'hips': hips,
          'ra': coord.ra.value,
          'dec': coord.dec.value,
-         'fov': (fov * u.arcmin).to(u.deg).value, # Consider reducing the FOV by half.
-         'width': 500, 
-         'height': 500 
+         'fov': (config['BG_FOV'] * u.arcmin).to(u.deg).value, # Consider reducing the FOV by half.
+         'width': 1000, 
+         'height': 1000
      }   
+
         url = f'http://alasky.u-strasbg.fr/hips-image-services/hips2fits?{urlencode(query_params)}'
 
-        hdu = fits.open(url) # Opening FITS file.
-        hdu = hdu[0]
+        hdu = fits.open(url)[0] # Opening FITS file.
+
 
         wcs = WCS(hdu.header)
 
         img_data = hdu.data
-
-        info = {
-            'data': img_data,
-            'wcs': wcs,
-            'ra': coord.ra.value,
-            'dec': coord.dec.value
-        }
         
-        return info
+        return coord, fov, wcs, img_data
 
-def flags(skys, cat):
+#def flags(skys, cat):
 
-    print("Flagging bright objects...")
-    b_flag = list(map(lambda sky: sky.flag_bright() if not sky.no_sources else 'no sources', skys)) # Flags bright objects.
+    #print("Flagging bright objects...")
+    #b_flag = list(map(lambda sky: sky.flag_bright() if not sky.no_sources else 'no sources', skys)) # Flags bright objects.
         
-    print("Flagging objects within 0.5 arcmin...")
-    dist_flag = list(map(lambda sky: sky.flag_dist(0.5 * u.arcmin) if not sky.no_sources else 'no sources', skys)) # Flags objects within a 0.5' radius.
+    #print("Flagging objects within 0.5 arcmin...")
+    #dist_flag = list(map(lambda sky: sky.flag_dist(0.5 * u.arcmin) if not sky.no_sources else 'no sources', skys)) # Flags objects within a 0.5' radius.
 
     # We prepare an empty string to fill it with the brightness flags.
-    b_notice = f""
+    #b_notice = f""
 
-    mag = config['CATALOG'][cat]['flag']
+    #mag = config['CATALOG'][cat]['flag']
 
-    for item in b_flag: # Goes through each flagged source for each patch of sky 
-        if item != 'no sources': # Make sure that the sky isn't empty.
-            b_notice += f'There is a {item["mag"]:.3f} {mag} source within \
-    {item["dist"].to_string(unit=u.arcmin)} of the target on {item["date"]}\n'
+    #for item in b_flag: # Goes through each flagged source for each patch of sky 
+        #if item != 'no sources': # Make sure that the sky isn't empty.
+            #b_notice += f'There is a {item["mag"]:.3f} {mag} source within \
+    #{item["dist"].to_string(unit=u.arcmin)} of the target on {item["date"]}\n'
 
     # Empty string to fill with distance info.
-    dist_notice = f""
+    # dist_notice = f""
 
     # Filling empty string with information about distances.
-    for item in dist_flag:
-        if item != 'no sources':
-            dist_notice += f'There are {item["flagged"]} sources within \
-    {item["thresh"]} of the target on {item["date"]}\n'
+    # for item in dist_flag:
+        # if item != 'no sources':
+            # dist_notice += f'There are {item["flagged"]} sources within \
+    # {item["thresh"]} of the target on {item["date"]}\n'
             
-    return b_notice, dist_notice
+    #return b_notice #, dist_notice
 
 def best_seen(skys):
     best_dates = []

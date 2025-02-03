@@ -1,6 +1,6 @@
 import sys
 import os
-from PyQt5.QtCore import pyqtSignal, Qt,  QThread
+from PyQt5.QtCore import pyqtSignal, Qt, QThread
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import (
     QApplication,
@@ -39,6 +39,16 @@ config_path = os.path.join('settings', 'config.yml')
 with open(config_path, 'r') as f:
     config = yaml.safe_load(f)
 
+class MoThread(QThread):
+    result_ready = pyqtSignal()
+
+    def __init_(self, backend):
+        super().__init__()
+        self.backend = backend
+
+    def run(self):
+        pass
+
 class MainWindow(QMainWindow):
 
     '''
@@ -51,9 +61,10 @@ class MainWindow(QMainWindow):
     signal_rotate = pyqtSignal(int)
     signal_date = pyqtSignal(str)
 
-    def __init__(self):
+    def __init__(self, backend):
         super().__init__()
-        self.angle = None
+        self.single_img = False
+        self.backend = backend
         self.initialize_gui()
 
     def initialize_gui(self):
@@ -598,7 +609,6 @@ class MainWindow(QMainWindow):
                 'hips': self.hips_cbox.currentText()
             }
 
-            print(inputs)
             self.signal_valid_input.emit(inputs)
 
         else:
@@ -835,7 +845,7 @@ class MainWindow(QMainWindow):
 
     def motion_hover(self, event):
 
-        if self.ax != 'Empty':
+        if self.ax != 'Empty' and not self.single_img:
             annotation_visibility = self.annotation.get_visible()
             any_hovered = False  # Flag to track if any target is hovered
             
@@ -866,56 +876,71 @@ class MainWindow(QMainWindow):
                 if not any_hovered and annotation_visibility:
                     self.annotation.set_visible(False)
                     self.canvas.draw_idle()
+
+        elif self.single_img:
+            hovered = False  # Flag to track if any target is hovered
+            
+            if event.inaxes == self.ax:
+                is_contained, _ = self.target[0].contains(event)
+                if is_contained:
+                        # Show the corresponding quadrangle
+                    self.q.set(visible=True)
+
+                    self.canvas.draw_idle()
+                    hovered = True  # A target is hovered
+                else:
+                    # Hide quadrangles not hovered
+                    self.q.set(visible=False)
+                
+                # If no target is hovered, hide the annotation
+            if not hovered:
+                self.canvas.draw_idle()
         else:
             pass
 
 
-    def single_plot(self, info):
+    def single_plot(self, coords, fov, wcs, data):
         '''
         Returns None.
 
         Plots a single image on the canvas.
         '''
 
+        self.single_img = True
         self.figure.clear()
 
-        norm = simple_norm(info['data'], 'sqrt', percent=99.)
+        norm = simple_norm(data, 'sqrt', percent=99.)
 
-        self.ax = plt.subplot(projection=info['wcs'])
+        self.ax = plt.subplot(projection=wcs)
 
-        self.ax.imshow(info['data'], cmap='Greys', origin='lower', norm=norm)
+        self.ax.imshow(data, cmap='Greys', origin='lower', norm=norm)
         self.ax.set_xlabel('Right Ascension', fontsize=15)
         self.ax.set_ylabel('Declination', fontsize=15)
         self.ax.grid(color='white', ls='solid', b=True)
 
-        self.ax.plot(info['ra'], info['dec'], '+', color='blue', mfc='None', 
+        
+
+        self.target = self.ax.plot(coords.ra.value, coords.dec.value, '+', color='blue', mfc='None', 
                     transform=self.ax.get_transform('world'), 
                     ms=20, mew=0.5) # Center marker
         
         add_scalebar(self.ax, label="1'", length=1 * u.arcmin, 
                      color='black', label_top=True)
         
-        arrow_up = FancyArrowPatch((10, 10), (10, 70),
-                                color='black', arrowstyle='->',
-                                mutation_scale=15, linewidth=1.5)
-        self.ax.add_patch(arrow_up)
-        self.ax.text(10, 72, 'N', ha='center', va='bottom', 
-                fontsize=15, weight='bold')
-
-
-        arrow_right = FancyArrowPatch((10, 10), (70, 10),
-                                    color='black', arrowstyle='->',
-                                    mutation_scale=15, linewidth=1.5)
-        self.ax.add_patch(arrow_right)
-        self.ax.text(72, 10, 'E', ha='left', va='center', 
-                fontsize=15, weight='bold')
-
         
-        axfov = plt.axes([0.25, 0.15, 0.65, 0.03])
-        fov = Slider(axfov, self.figure, 'FOV Rotation', 0, 
-                     360, dragging=True)
         
-        fov.on_changed(self.rotate)
+        d = (fov / 2) * u.arcmin
+        d_deg = d.to(u.deg).value
+
+        anchor_ra = coords.ra.value - d_deg
+        anchor_de = coords.dec.value - d_deg
+
+        self.q = Quadrangle((anchor_ra, anchor_de)*u.deg, fov*u.arcmin, fov*u.arcmin,
+                    edgecolor='red', facecolor='none',
+                    transform=self.ax.get_transform('world'), linewidth=0.8, linestyle='-')
+        
+        self.ax.add_patch(self.q)
+    
         
         self.figure.add_subplot(self.ax)
         self.figure.tight_layout()

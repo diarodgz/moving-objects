@@ -1,5 +1,6 @@
-from backend.sky_handling import query, sky_process, sky_init, get_img, best_seen, flags
-from PyQt5.QtCore import pyqtSignal, QObject, QThread
+from backend.sky_handling import query, sky_process, sky_init, get_img, best_seen
+from PyQt5.QtCore import pyqtSignal, QObject, QThread, QRunnable, QThreadPool
+import concurrent.futures
 from datetime import datetime
 from astroquery.exceptions import InvalidQueryError
 from requests.exceptions import ConnectTimeout
@@ -9,28 +10,11 @@ from backend.ob import read_ob, read_eph, process_eph, process_desc
 import astropy.units as u
 import os
 import yaml
+import psutil
 
 config_path = os.path.join('settings', 'config.yml')
 with open(config_path, 'r') as f:
     config = yaml.safe_load(f)
-
-class BackThread(QThread):
-    '''
-    Thread to stop GUI from freezing.
-    '''
-
-    def __init__(self, signal_update, prog):
-        super().__init__()
-        self.signal_update = signal_update
-        self.prog = prog
-
-    def update(self):
-        self.signal_update.emit(self.prog)
-
-    def run(self):
-        self.update()
-        
-
 
 
 class Backend(QObject):
@@ -67,7 +51,7 @@ class Backend(QObject):
     '''
 
     signal_plot = pyqtSignal(list)
-    signal_splot = pyqtSignal(dict)
+    signal_splot = pyqtSignal(object, float, object, object)
     signal_error = pyqtSignal(str)
     signal_progress = pyqtSignal(tuple)
     signal_flags = pyqtSignal(list, str)
@@ -210,7 +194,7 @@ class Backend(QObject):
             return True
 
     def validate_coords(self, info, ra, dec, 
-                        inst, cat):
+                        inst, cat, hips):
         
         '''
         Validate coordinate search.
@@ -221,8 +205,8 @@ class Backend(QObject):
         ra: list
         dec: list
         inst: str
-        rot: str
         cat: str
+        hips: str
         '''
         
         print("Validating coordinates...")
@@ -231,43 +215,47 @@ class Backend(QObject):
 
 
         # Validating RA:
-        try:
-            # Validating RA in hh:mm:ss format.
-            ra = f'{ra[0]}:{ra[1]}:{ra[2]}'
-            datetime.strptime(ra, '%H:%M:%S')
-        except:
+        if int(ra[0]) > 23:
             self.validated = False
-            self.signal_error.emit("Invalid RA value for hh:mm:ss format.")
+            self.signal_error.emit("Invalid RA value for hh mm ss format.")
+        elif int(ra[1]) > 59:
+            self.validated = False
+            self.signal_error.emit("Invalid RA value for hh mm ss format.")
+        elif int(ra[2]) > 59:
+            self.validated = False
+            self.signal_error.emit("Invalid RA value for hh mm ss format.")
         else:
-            pass
+            ra_valid = f'{ra[0]} {ra[1]} {ra[2]}'
+        #else:
+            #pass
                 
     
         # Valildating DEC:
-        if int(dec[0]) <= -90 or int(dec[0]) >= 90:
+        if int(dec[0][1:]) <= -90 or int(dec[0]) >= 90:
             self.validated = False
             self.signal_error.emit("Invalid dd value for dd:mm:ss format.")
         elif int(dec[1]) > 59:
             self.validated = False
             self.signal_error.emit("Invalid mm value for dd:mm:ss format.")
-        elif int(dec[1]) > 59:
+        elif int(dec[2]) > 59:
             self.validated = False
             self.signal_error.emit("Invalid ss value for dd:mm:ss format.")
         else:
-            dec = f'{dec[0]}:{dec[1]}:{dec[2]}'
+            dec_valid = f'{dec[0]} {dec[1]} {dec[2]}'
         
         if self.validated:
             print("Validated coordinates...")
             # self.thread.prog = (25, "Validated coordinates...")
             #self.signal_progress.emit((25, "Validated coordinates..."))
-            print(ra, dec)
             self.inst = inst
             self.cat = cat
+            self.hips = hips
 
             for key in config['INSTRUMENT'].keys():
                 if self.inst == key:
                     self.fov = config['INSTRUMENT'][self.inst]
 
-            self.single_img(self.fov, ra, dec)
+            self.single_img(self.fov, ra_valid, dec_valid)
         else:
             print(f"Inputs invalid.")
 
@@ -362,8 +350,8 @@ class Backend(QObject):
         fov: int
         '''
 
-        img_info = get_img(ra, dec, fov)
-        self.signal_splot.emit(img_info)
+        coords, fov, wcs, data = get_img(ra, dec, fov, config['HIPS_SURVEY'][self.hips])
+        self.signal_splot.emit(coords, fov, wcs, data)
 
         print("Sending plot to front end...")
         # self.thread.prog = (60, "Sending plot to front end...")
@@ -461,7 +449,6 @@ class Backend(QObject):
     def send_skyfov(self, date):
 
         sky = list(filter(lambda x: (x.date.value == date), self.skys))
-
         self.signal_skyfov.emit(sky[0].coords.ra.value, 
                                 sky[0].coords.dec.value, self.fov)
         
