@@ -339,7 +339,7 @@ class MainWindow(QMainWindow):
 
         # Adding title widgets to the title layout
         self.title_box.addWidget(self.title, alignment=Qt.AlignCenter)
-        self.title_box.addStretch(1)
+        # self.title_box.addStretch(1)
 
         # Scrollbox that contains information pertaining to bright and nearby sources
         # self.list_widget = QListWidget(self)
@@ -674,7 +674,37 @@ class MainWindow(QMainWindow):
             time_s.setEnabled(True)
             time_e.setEnabled(True)
 
-        #self.rotate_inp.setEnabled(True)
+        self.target_inp.clear()
+        self.target_inp.show()
+
+        for inputs in self.query_inputs:
+
+            inputs.show()
+
+        for ra, dec in zip(self.ra_input, self.dec_input):
+            ra.hide()
+            dec.hide()
+
+        for time_s, time_e in zip(self.time_s, self.time_e):
+            time_s.show()
+            time_e.show()
+
+
+        self.time_dot1.show()
+        self.time_dot2.show()
+        self.time_dot3.show()
+        self.time_dot4.show()
+
+        for label in self.query_labels:
+            label.show()
+
+        self.step_cbox.show()
+
+        self.utc_button.show()
+        self.etc_button.show()
+
+        self.best_seen.show()
+        self.target_inp.hide()
 
 
     def clicked_target(self):
@@ -712,6 +742,40 @@ class MainWindow(QMainWindow):
             time_s.setEnabled(True)
             time_e.setEnabled(True)
 
+        self.target_inp.clear()
+        self.target_inp.show()
+
+        for inputs in self.query_inputs:
+
+            inputs.show()
+
+        for ra, dec in zip(self.ra_input, self.dec_input):
+            ra.hide()
+            dec.hide()
+
+        for time_s, time_e in zip(self.time_s, self.time_e):
+            time_s.show()
+            time_e.show()
+
+
+        self.time_dot1.show()
+        self.time_dot2.show()
+        self.time_dot3.show()
+        self.time_dot4.show()
+
+        for label in self.query_labels:
+            label.show()
+
+        self.from_inp.show()
+        self.end_inp.show()
+
+        self.step_cbox.show()
+
+        self.utc_button.show()
+        self.etc_button.show()
+
+        self.best_seen.show()
+
         #self.rotate_inp.setEnabled(True)
 
     def clicked_coord(self):
@@ -739,17 +803,35 @@ class MainWindow(QMainWindow):
         self.target_inp.hide()
 
         for inputs in self.query_inputs:
-            inputs.setEnabled(False)
+
+            inputs.hide()
 
         for ra, dec in zip(self.ra_input, self.dec_input):
             ra.setEnabled(True)
             dec.setEnabled(True)
 
         for time_s, time_e in zip(self.time_s, self.time_e):
-            time_s.setEnabled(False)
-            time_e.setEnabled(False)
+            time_s.hide()
+            time_e.hide()
 
-        #self.rotate_inp.setEnabled(True)
+
+        self.time_dot1.hide()
+        self.time_dot2.hide()
+        self.time_dot3.hide()
+        self.time_dot4.hide()
+
+        for label in self.query_labels:
+            label.hide()
+
+        self.from_inp.hide()
+        self.end_inp.hide()
+
+        self.step_cbox.hide()
+
+        self.utc_button.hide()
+        self.etc_button.hide()
+
+        self.best_seen.hide()
 
 
     def update_progbar(self, prog):
@@ -877,24 +959,6 @@ class MainWindow(QMainWindow):
                     self.annotation.set_visible(False)
                     self.canvas.draw_idle()
 
-        elif self.single_img:
-            hovered = False  # Flag to track if any target is hovered
-            
-            if event.inaxes == self.ax:
-                is_contained, _ = self.target[0].contains(event)
-                if is_contained:
-                        # Show the corresponding quadrangle
-                    self.q.set(visible=True)
-
-                    self.canvas.draw_idle()
-                    hovered = True  # A target is hovered
-                else:
-                    # Hide quadrangles not hovered
-                    self.q.set(visible=False)
-                
-                # If no target is hovered, hide the annotation
-            if not hovered:
-                self.canvas.draw_idle()
         else:
             pass
 
