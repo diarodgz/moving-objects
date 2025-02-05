@@ -10,6 +10,7 @@ from astropy.wcs import WCS
 from urllib.parse import urlencode
 import yaml
 import os
+import multiprocessing
 
 config_path = os.path.join('settings', 'config.yml')
 with open(config_path, 'r') as f:
@@ -51,37 +52,32 @@ def sky_init(eph, fov, hips, catalog, filter):
     catalog: str
     filter: str
     '''
+
+    if fov <= 1:
+        fov += 1
+    else:
+        pass
     
     i = 0
     skys = []
 
-    if fov <= 1:
-        # Amplifies FOV by 1 arcminute to have search results.
-        print(f'Using small FOV {fov}... Amplifying by 1 arcmin.')
-        for RA, DEC, date in tqdm(zip(eph['RA'], eph['Dec'], eph['Date']), total=len(eph)):
-            c = SkyCoord(ra=RA*u.degree, dec=DEC*u.degree, frame='icrs')
-            v = Vizier(catalog=catalog, row_limit=-1, columns=['all'],
-                    column_filters=filter) # SDSS16
-            result = v.query_region(coordinates=c, width=Angle(fov+1, u.arcminute), 
-                                    height=Angle(fov+1, u.arcminute), frame='icrs')
-            sky = Sky(i, result, c, date, catalog, hips, fov)
-            skys.append(sky)
-            i += 1
-    else:
-        for RA, DEC, date in tqdm(zip(eph['RA'], eph['Dec'], eph['Date']), total=len(eph)):
-            c = SkyCoord(ra=RA*u.degree, dec=DEC*u.degree, frame='icrs')
-            v = Vizier(catalog=catalog, row_limit=-1, columns=['all'],
-                    column_filters=filter) 
-            result = v.query_region(coordinates=c, width=Angle(fov, u.arcminute), 
-                                    height=Angle(fov, u.arcminute), frame='icrs')
-            sky = Sky(i, result, c, date, catalog, hips, fov)
-            skys.append(sky)
-            i += 1
+    # Amplifies FOV by 1 arcminute to have search results.
+        
+    print(f'Using small FOV {fov}... Amplifying by 1 arcmin.')
+    for RA, DEC, date in tqdm(zip(eph['RA'], eph['Dec'], eph['Date']), total=len(eph)):
+        c = SkyCoord(ra=RA*u.degree, dec=DEC*u.degree, frame='icrs')
+        v = Vizier(catalog=catalog, row_limit=-1, columns=['all'],
+                column_filters=filter) # SDSS16
+        result = v.query_region(coordinates=c, width=Angle(fov, u.arcminute), 
+                                height=Angle(fov, u.arcminute), frame='icrs')
+        sky = Sky(i, result, c, date, catalog, hips, fov)
+        skys.append(sky)
+        i += 1
         
     return skys
 
     
-def sky_process(skys, fov):
+def sky_process(skys):
     '''
     Receives iterable with Sky objects and applies each method.
     skys: array of Sky objects
@@ -94,39 +90,65 @@ def sky_process(skys, fov):
             sky.separate()
         
         print(f'Sky {sky.num} has no sources: {sky.no_sources}')
-        sky.img_query(fov / 2) # Divided by two because the image query takes a radius.
+        sky.set_query_params()
+        #sky.img_query(fov / 2) # Divided by two because the image query takes a radius.
 
+def query_sky_img(sky):
+    '''
+    Method that executes the img_query method in a Sky object.
+    
+    -------
+    Parameters
+    -------
+    sky: instance of Sky.
+    '''
+    return sky.img_query()
+
+def run_parallel_queries(skys):
+    """
+    Executes multiple HIPS queries in parallel using multiprocessing.
+
+    -------
+    Parameters:
+    ---------
+    query_params_list: list of Sky objects.
+    """
+
+    with multiprocessing.Pool(processes=len(skys)) as pool:
+        results = pool.map(query_sky_img, skys)
+    return results
         
 
-
-def sky_query(coordinates, radius=None, fov=None):
+def single_sky_query(ra, dec, fov, catalog, filter):
 
     '''
-    Queries sky images in the given coordinates.
-    coordinates: list
+    Queries a single sky image in the given coordinates.
+    -------
+    Parameters
+    --------
+    ra: str
+    dec: str
+    fov: float
     '''
 
-    RA = [coordinates][0]
-    DEC = [coordinates][1]
+    if fov <= 1:
+        fov += 1
+    else:
+        pass
 
-    c = SkyCoord(ra=RA*u.degree, dec=DEC*u.degree, frame='icrs')
-
-    if fov is not None:
-
-        v = Vizier(catalog='V/154', keywords=['optical'], row_limit=1000, columns=['all']) # SDSS16
-        result = v.query_region(coordinates=c, width=Angle(fov, u.arcminute), 
-                                    height=Angle(fov, u.arcminute), frame='icrs')
-        
-    elif radius is not None:
-
-        v = Vizier(catalog='V/154', keywords=['optical'], row_limit=1000, columns=['all']) # SDSS16
-        result = v.query_region(coordinates=c, radius=Angle(fov, u.arcminute), frame='icrs')
-
+    c = SkyCoord(f'{ra} {dec}', frame='icrs')
+    v = Vizier(catalog=catalog, row_limit=-1, columns=['all'],
+                column_filters=filter) 
+    result = v.query_region(coordinates=c, width=Angle(fov, u.arcminute), 
+                            height=Angle(fov, u.arcminute), frame='icrs')
 
     return result
 
+def single_sky_flag():
+    pass
 
-def get_img(fov, ra, dec, hips):
+
+def get_img(fov, ra, dec, hips, rot):
     
         '''
         fov: int.
@@ -143,7 +165,8 @@ def get_img(fov, ra, dec, hips):
          'dec': coord.dec.value,
          'fov': (config['BG_FOV'] * u.arcmin).to(u.deg).value, # Consider reducing the FOV by half.
          'width': 1000, 
-         'height': 1000
+         'height': 1000,
+         'rotation_angle': float(rot)
      }   
 
         url = f'http://alasky.u-strasbg.fr/hips-image-services/hips2fits?{urlencode(query_params)}'
@@ -157,34 +180,8 @@ def get_img(fov, ra, dec, hips):
         
         return coord, fov, wcs, img_data
 
-#def flags(skys, cat):
-
-    #print("Flagging bright objects...")
-    #b_flag = list(map(lambda sky: sky.flag_bright() if not sky.no_sources else 'no sources', skys)) # Flags bright objects.
-        
-    #print("Flagging objects within 0.5 arcmin...")
-    #dist_flag = list(map(lambda sky: sky.flag_dist(0.5 * u.arcmin) if not sky.no_sources else 'no sources', skys)) # Flags objects within a 0.5' radius.
-
-    # We prepare an empty string to fill it with the brightness flags.
-    #b_notice = f""
-
-    #mag = config['CATALOG'][cat]['flag']
-
-    #for item in b_flag: # Goes through each flagged source for each patch of sky 
-        #if item != 'no sources': # Make sure that the sky isn't empty.
-            #b_notice += f'There is a {item["mag"]:.3f} {mag} source within \
-    #{item["dist"].to_string(unit=u.arcmin)} of the target on {item["date"]}\n'
-
-    # Empty string to fill with distance info.
-    # dist_notice = f""
-
-    # Filling empty string with information about distances.
-    # for item in dist_flag:
-        # if item != 'no sources':
-            # dist_notice += f'There are {item["flagged"]} sources within \
-    # {item["thresh"]} of the target on {item["date"]}\n'
-            
-    #return b_notice #, dist_notice
+def query_sky_object(sky_obj):
+    return sky_obj.img_query()
 
 def best_seen(skys):
     best_dates = []
@@ -201,6 +198,3 @@ def best_seen(skys):
 {best_dates[0].date.value} to {best_dates[len(best_dates) - 1].date.value}'
     else:
         return f'The object is best seen from dates before {skys[0].date.value}\nand after {skys[len(skys)-1].date.value}'
-
-# NOTES:
-# Allow option to change frame?

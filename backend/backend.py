@@ -169,6 +169,7 @@ class Backend(QObject):
             self.inst = inst
             self.cat = cat
             self.hips = hips
+            
 
             #self.signal_progress.emit((15, "Validated inputs..."))
             # self.thread.prog = (15, "Validated inputs...")
@@ -196,7 +197,7 @@ class Backend(QObject):
             return True
 
     def validate_coords(self, info, ra, dec, 
-                        inst, cat, hips):
+                        inst, rot, cat, hips):
         
         '''
         Validate coordinate search.
@@ -252,6 +253,7 @@ class Backend(QObject):
             self.inst = inst
             self.cat = cat
             self.hips = hips
+            self.rot = rot
 
             for key in config['INSTRUMENT'].keys():
                 if self.inst == key:
@@ -352,7 +354,7 @@ class Backend(QObject):
         fov: int
         '''
 
-        coords, fov, wcs, data = get_img(ra, dec, fov, config['HIPS_SURVEY'][self.hips])
+        coords, fov, wcs, data = get_img(ra, dec, fov, config['HIPS_SURVEY'][self.hips], self.rot)
         self.signal_splot.emit(coords, fov, wcs, data)
 
         print("Sending plot to front end...")

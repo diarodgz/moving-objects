@@ -13,7 +13,7 @@ def parallactic_angle(ra, dec):
     location = EarthLocation.of_site('Paranal')
 
     # Convert input time to Astropy Time object
-    current_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    current_time = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
     observing_time = Time(current_time)
 
     # Define the sky position

@@ -604,7 +604,7 @@ class MainWindow(QMainWindow):
             inputs['step_u'] = self.step_cbox.currentText()
             inputs['n_result'] = config['NUM_RESULTS']
             inputs['inst'] = self.inst_cbox.currentText()
-            #inputs['rot'] = (self.rotate_inp.text(), self.rot_u.currentText())
+            #inputs['rot'] = (self.rot_inp.text())
             inputs['cat'] = (self.cat_cbox.currentText())
             inputs['hips'] = (self.hips_cbox.currentText())
 
@@ -620,7 +620,7 @@ class MainWindow(QMainWindow):
                 'ra': ra,
                 'dec': dec,
                 'inst': self.inst_cbox.currentText(),
-                #'rot': (self.rotate_inp.text(), self.rot_u.currentText()),
+                'rot': self.rot_inp.text(),
                 'cat': self.cat_cbox.currentText(),
                 'hips': self.hips_cbox.currentText()
             }
