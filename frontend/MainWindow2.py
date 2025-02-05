@@ -58,7 +58,7 @@ class MainWindow(QMainWindow):
     '''
     signal_valid_input = pyqtSignal(dict)
     signal_thread = pyqtSignal(str)
-    signal_rotate = pyqtSignal(int)
+    signal_pa = pyqtSignal(str, str)
     signal_date = pyqtSignal(str)
 
     def __init__(self, backend):
@@ -81,7 +81,8 @@ class MainWindow(QMainWindow):
         self.from_label = QLabel('Start Date - Time', self)
         self.end_label = QLabel('End Date - Time', self)
         self.step_label = QLabel('Step', self)
-        self.num_label = QLabel('N. Results', self)
+        # self.num_label = QLabel('N. Results', self)
+        # self.rotation =  QLabel('Rotation', self)
         self.scale_label = QLabel('Time Scale', self)
         self.inst_label = QLabel('Instrument', self)
 
@@ -127,6 +128,7 @@ class MainWindow(QMainWindow):
             'font: bold 20px'
         )
 
+        self.rot_label = QLabel('Rotation (deg)', self)
         #self.bright_label = QLabel('Brightest objects:', self)
         #self.brightest_label = QLabel('', self)
 
@@ -144,7 +146,7 @@ class MainWindow(QMainWindow):
             self.end_label,
             self.scale_label,
             self.step_label,
-            self.num_label
+            self.rot_label
         ]
         
         
@@ -179,9 +181,18 @@ class MainWindow(QMainWindow):
         self.end_inp.setFixedWidth(125)
         self.end_inp.setInputMask('0000-00-00;X')
 
-        self.num_inp = QLineEdit(self)
-        self.num_inp.setPlaceholderText('N. Results, e.g. 1,..,N.')
-        self.num_inp.setFixedWidth(150)
+        #self.num_inp = QLineEdit(self)
+        #self.num_inp.setPlaceholderText('N. Results, e.g. 1,..,N.')
+        #self.num_inp.setFixedWidth(150)
+
+        # Rotation input and parallactic angle calculation button
+        self.rot_inp = QLineEdit(self)
+        self.rot_inp.setText('0')
+        self.rot_inp.setFixedWidth(150)
+
+        # Calculate PA Button
+        self.calc_button = QPushButton('Calculate PA', self)
+        self.calc_button.clicked.connect(self.calculate_pa)
 
         # Start times inputs.
 
@@ -240,7 +251,7 @@ class MainWindow(QMainWindow):
             self.from_inp,
             self.end_inp,
             self.step_inp,
-            self.num_inp
+            self.rot_inp
         ]
 
         # RA coord input
@@ -415,9 +426,14 @@ class MainWindow(QMainWindow):
         self.step_hbox.addWidget(self.step_cbox, alignment=Qt.AlignCenter)
 
         #  Adding widgets to user input layout 4.
+
+        self.rot_hbox = QHBoxLayout()
+        self.rot_hbox.addWidget(self.rot_inp)
+        self.rot_hbox.addWidget(self.calc_button)
+
         self.info_vbox4.addLayout(self.scale_hbox)
         self.info_vbox4.addLayout(self.step_hbox)
-        self.info_vbox4.addWidget(self.num_inp)
+        self.info_vbox4.addLayout(self.rot_hbox)
 
         for label in self.query_labels[:2]:
             # Takes the first three of the labels and
@@ -586,7 +602,7 @@ class MainWindow(QMainWindow):
 
             inputs['step'] = self.step_inp.text()
             inputs['step_u'] = self.step_cbox.currentText()
-            inputs['n_result'] = self.num_inp.text()
+            inputs['n_result'] = config['NUM_RESULTS']
             inputs['inst'] = self.inst_cbox.currentText()
             #inputs['rot'] = (self.rotate_inp.text(), self.rot_u.currentText())
             inputs['cat'] = (self.cat_cbox.currentText())
@@ -625,7 +641,7 @@ class MainWindow(QMainWindow):
                 'end_time': time_end,
                 'step': self.step_inp.text(),
                 'step_u': self.step_cbox.currentText(),
-                'n_result': self.num_inp.text(),
+                'n_result': config['NUM_RESULTS'],
                 #'rot': (self.rotate_inp.text(), self.rot_u.currentText()),
                 'cat': self.cat_cbox.currentText(),
                 'hips': self.hips_cbox.currentText()
@@ -795,7 +811,6 @@ class MainWindow(QMainWindow):
         self.ra_label.show()
         self.dec_label.show()
 
-
         self.ob_id.clear()
         self.ob_id.hide()
 
@@ -832,6 +847,9 @@ class MainWindow(QMainWindow):
         self.etc_button.hide()
 
         self.best_seen.hide()
+
+        self.rot_label.show()
+        self.rot_inp.show()
 
 
     def update_progbar(self, prog):
@@ -1079,6 +1097,19 @@ class MainWindow(QMainWindow):
             self.table.setItem(row, 3, QTableWidgetItem(f'{item["dist"].to(u.arcmin).value:.3f}'))
             self.table.setItem(row, 4, QTableWidgetItem(item['date'].value.rstrip("000").rstrip(".")))
             row += 1
+
+    def calculate_pa(self):
+
+        ra = [x.text() for x in self.ra_input]
+        dec = [x.text() for x in self.dec_input]
+
+        submit_ra = f'{ra[0]} {ra[1]} {ra[2]}'
+        submit_dec = f'{dec[0]} {dec[1]} {dec[2]}'
+        
+        self.signal_pa.emit(submit_ra, submit_dec)
+
+    def update_rot(self, angle):
+        self.rot_inp.setText(str(angle))
 
 
     def exit(self):

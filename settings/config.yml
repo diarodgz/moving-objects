@@ -33,4 +33,5 @@ HIPS_SURVEY:
 
 OB_PATH: OB_format
 
+NUM_RESULTS: '100'
 

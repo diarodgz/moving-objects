@@ -7,6 +7,7 @@ from requests.exceptions import ConnectTimeout
 from reproject import reproject_interp
 from reproject.mosaicking import reproject_and_coadd, find_optimal_celestial_wcs
 from backend.ob import read_ob, read_eph, process_eph, process_desc
+from backend.tools import parallactic_angle
 import astropy.units as u
 import os
 import yaml
@@ -59,6 +60,7 @@ class Backend(QObject):
     signal_best = pyqtSignal(str)
     signal_datebox = pyqtSignal(list)
     signal_dates = pyqtSignal(list)
+    signal_send_pa = pyqtSignal(float)
     signal_skyfov =pyqtSignal(int, int, int)
 
     def __init__(self, inst=None, rot=None, cat=None, validated=None, skys=None,
@@ -451,6 +453,11 @@ class Backend(QObject):
         sky = list(filter(lambda x: (x.date.value == date), self.skys))
         self.signal_skyfov.emit(sky[0].coords.ra.value, 
                                 sky[0].coords.dec.value, self.fov)
+        
+    def pa_calculator(self, ra, dec):
+        p = parallactic_angle(ra, dec)
+        self.signal_send_pa.emit(p)
+
         
 
     def send_best_seen(self, skys):

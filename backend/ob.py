@@ -3,7 +3,7 @@ from astropy.coordinates import SkyCoord
 import os
 from collections import namedtuple
 from astropy.table.table import Table, Row, Column
-from backend.variables import ob_path
+
 
 def read_ob(path: str):
     '''

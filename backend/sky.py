@@ -5,7 +5,6 @@ from astropy.wcs import WCS
 from urllib.parse import urlencode
 from urllib.parse import quote
 from regions import CircleSkyRegion
-import backend.variables as v
 import os
 import yaml
 

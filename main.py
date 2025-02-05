@@ -17,6 +17,7 @@ if __name__ == '__main__':
 
     sys.__excepthook__ = hook
     app =  QApplication([])
+    app.setStyle('Fusions')
 
     # Creating an instance of the front and back end windows
     back = Backend()
@@ -24,6 +25,8 @@ if __name__ == '__main__':
 
     # Signal connecting
     front.signal_valid_input.connect(back.validation)
+    front.signal_pa.connect(back.pa_calculator)
+    back.signal_send_pa.connect(front.update_rot)
     back.signal_error.connect(front.error)
     back.signal_plot.connect(front.plot)
     back.signal_splot.connect(front.single_plot)
