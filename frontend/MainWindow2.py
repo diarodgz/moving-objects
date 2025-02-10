@@ -34,6 +34,7 @@ from astropy.visualization import (MinMaxInterval, SqrtStretch, AsinhStretch,
                                    ImageNormalize, LogStretch, simple_norm)
 import astropy.units as u
 import yaml
+import matplotlib.transforms as transforms
 
 config_path = os.path.join('settings', 'config.yml')
 with open(config_path, 'r') as f:
@@ -193,6 +194,8 @@ class MainWindow(QMainWindow):
         # Calculate PA Button
         self.calc_button = QPushButton('Calculate PA', self)
         self.calc_button.clicked.connect(self.calculate_pa)
+
+        # self.time_inp
 
         # Start times inputs.
 
@@ -1017,10 +1020,17 @@ class MainWindow(QMainWindow):
         anchor_ra = coords.ra.value - d_deg
         anchor_de = coords.dec.value - d_deg
 
+        if float(self.rot_inp.text()) > 0:
+            angle = -float(self.rot_inp.text())
+        else:
+            angle = float(self.rot_inp.text())
+
         self.q = Quadrangle((anchor_ra, anchor_de)*u.deg, fov*u.arcmin, fov*u.arcmin,
                     edgecolor='red', facecolor='none',
                     transform=self.ax.get_transform('world'), linewidth=0.8, linestyle='-')
         
+        rotation = transforms.Affine2D().rotate_deg_around(coords.ra.value, coords.dec.value, angle)
+        self.q.set_transform(rotation + self.ax.get_transform('world'))
         self.ax.add_patch(self.q)
     
         
@@ -1042,26 +1052,6 @@ class MainWindow(QMainWindow):
 
         self.angle = deg
 
-    def plot_fov(self, ra, dec, fov):
-        '''
-        Returns None.
-
-        Plots the rectangle on the canvas with the chosen FOV.
-        '''
-
-        d = (fov / 2) * u.arcmin
-        d_deg = d.to(u.deg).value
-
-        anchor_ra = ra - d_deg
-        anchor_de = dec - d_deg
-        
-        r = Rectangle((anchor_ra, anchor_de), (fov*u.arcmin).to(u.deg).value, 
-                      (fov*u.arcmin).to(u.deg).value, edgecolor='red', facecolor='none',
-                      transform=self.figure.get_axes()[0].get_transform('world'), 
-                      linewidth=0.8, linestyle='-', rotation_point=(ra, dec),
-                      angle=self.angle)
-
-        self.figure.get_axes()[0].add_patch(r)
 
     def update_bestseen(self, best):
         self.best_seen.setText(best)

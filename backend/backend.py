@@ -9,6 +9,8 @@ from reproject.mosaicking import reproject_and_coadd, find_optimal_celestial_wcs
 from backend.ob import read_ob, read_eph, process_eph, process_desc
 from backend.tools import parallactic_angle
 import astropy.units as u
+from astropy.time import Time
+from astropy.coordinates import EarthLocation
 import os
 import yaml
 import psutil
@@ -51,7 +53,7 @@ class Backend(QObject):
 
     '''
 
-    signal_plot = pyqtSignal(list)
+    signal_plot = pyqtSignal(object, object, object)
     signal_splot = pyqtSignal(object, float, object, object)
     signal_error = pyqtSignal(str)
     signal_progress = pyqtSignal(tuple)
@@ -74,6 +76,7 @@ class Backend(QObject):
         self.thread = None
         self.skys = None
         self.hips = None
+        self.t_scale = None
 
     def validation(self, inputs: dict) -> None:
 
@@ -102,8 +105,7 @@ class Backend(QObject):
         elif inputs['info'] == 'ob':
             self.validate_ob(**inputs)
 
-    def validate_target(self, info, id, start, end, time_start, 
-                        time_end, step, step_u, n_result,
+    def validate_target(self, info, id, start, end, t_scale, step, step_u, n_result,
                         inst, cat, hips):
         
         '''
@@ -114,22 +116,14 @@ class Backend(QObject):
         ------------
 
         '''
-        self.validated = True
 
         print("Validating target...")
         # self.thread.prog = (5, "Validating target...")
         #self.signal_progress.emit((5, "Validating target..."))
-        
-        starttime = f'{time_start[0]}:{time_start[1]}:{time_start[2]}'
-        endtime = f'{time_end[0]}:{time_end[1]}:{time_end[2]}'
 
-        # Transforming date and time into 'YYYY-MM-DD HH:MM:SS' format.
-        datetime_start = f'{start} {starttime}'
-        datetime_end = f'{end} {endtime}'
-
-        # Validating UTC date-time format.
+        # Validating time.
             
-        if self.validate_datetime(datetime_start, datetime_end):
+        if self.validate_datetime(start, end):
             print("Validated datetime...")
             # self.thread.prog = (10, "Validated datetime...")
             #self.signal_progress.emit((10, "Validated datetime..."))
@@ -160,15 +154,16 @@ class Backend(QObject):
             params_start = {}
 
             params_start['id'] = id
-            params_start['start_from'] = datetime_start
+            params_start['start_from'] = start
             params_start['step'] = step_units
-            params_start['t_start'] = datetime_start
-            params_start['t_end'] = datetime_end
+            params_start['t_start'] = start
+            params_start['t_end'] = end
             params_start['num_results'] = n
 
             self.inst = inst
             self.cat = cat
             self.hips = hips
+            self.t_scale = t_scale
             
 
             #self.signal_progress.emit((15, "Validated inputs..."))
@@ -180,24 +175,34 @@ class Backend(QObject):
             print(f'Validation state: {self.validated}')
         
 
-    def validate_datetime(self, datetime_start, datetime_end):
+    def validate_datetime(self, start, end):
 
-        print("Validating datetimes...")
+        print("Validating time window...")
 
-        try:
-            datetime.strptime(datetime_start, '%Y-%m-%d %H:%M:%S')
-            datetime.strptime(datetime_end, '%Y-%m-%d %H:%M:%S')
-            # or date_object = datetime.strptime(DATE, '%Y-%m-%d %H:%M:%S')
-            # if you need the actual date object later
-        except ValueError as e:
-            # handle invalid date
-            self.signal_error.emit("Invalid Date.")
-            print(f'Invalid Date: {e}')
+        
+        if self.t_scale == 'UTC' or self.t_scale == 'UT1':
+            startTime = Time(start, scale=config['T_SCALE'][self.t_scale])
+            endTime = Time(end, scale=config['T_SCALE'][self.t_scale])
         else:
+            location = EarthLocation.of_site("greenwich")
+
+            startTime = Time(start, scale='utc')
+            endTime = Time(end, scale='utc')
+
+            lst_apparent_start = startTime.sidereal_time("apparent", longitude=location.lon)
+            lst_apparent_end = endTime.sidereal_time("apparent", longitude=location.lon)
+        
+
+        if startTime < endTime or lst_apparent_start < lst_apparent_end:
             return True
+        else:
+            self.signal_error.emit("Invalid Date.")
+            print(f'Invalid date range.')
+            return False
 
     def validate_coords(self, info, ra, dec, 
-                        inst, rot, cat, hips):
+                        inst, rot, cat, hips, name, t_scale,
+                        time):
         
         '''
         Validate coordinate search.
@@ -206,7 +211,7 @@ class Backend(QObject):
         Parameters
         --------------
         ra: list
-        dec: list
+        dec: str
         inst: str
         cat: str
         hips: str
@@ -217,34 +222,21 @@ class Backend(QObject):
         #self.signal_progress.emit((20, "Validating coordinates..."))
 
 
-        # Validating RA:
-        if int(ra[0]) > 23:
-            self.validated = False
-            self.signal_error.emit("Invalid RA value for hh mm ss format.")
-        elif int(ra[1]) > 59:
-            self.validated = False
-            self.signal_error.emit("Invalid RA value for hh mm ss format.")
-        elif int(ra[2]) > 59:
-            self.validated = False
-            self.signal_error.emit("Invalid RA value for hh mm ss format.")
-        else:
-            ra_valid = f'{ra[0]} {ra[1]} {ra[2]}'
-        #else:
-            #pass
+        dec_list = dec.lstrip('-').lstrip('+').split(':')
                 
     
         # Valildating DEC:
-        if int(dec[0][1:]) <= -90 or int(dec[0]) >= 90:
+        if int(dec_list[0][1:]) <= -90 or int(dec_list[0]) >= 90:
             self.validated = False
             self.signal_error.emit("Invalid dd value for dd:mm:ss format.")
-        elif int(dec[1]) > 59:
+        elif int(dec_list[1]) > 59:
             self.validated = False
             self.signal_error.emit("Invalid mm value for dd:mm:ss format.")
-        elif int(dec[2]) > 59:
+        elif int(dec_list[2]) > 59:
             self.validated = False
             self.signal_error.emit("Invalid ss value for dd:mm:ss format.")
         else:
-            dec_valid = f'{dec[0]} {dec[1]} {dec[2]}'
+            print("Valid DEC.")
         
         if self.validated:
             print("Validated coordinates...")
@@ -259,14 +251,14 @@ class Backend(QObject):
                 if self.inst == key:
                     self.fov = config['INSTRUMENT'][self.inst]
 
-            self.single_img(self.fov, ra_valid, dec_valid)
+            self.single_img(self.fov, ra, dec)
         else:
             print(f"Inputs invalid.")
 
 
-    def validate_ob(self, id, start_date, end_date,
-                    start_time, end_time, step, step_u,
-                    n_result, rot, cat):
+    def validate_ob(self, info, id, start, end, 
+                    step, step_u, n_result, cat,
+                    t_scale, inst, hips):
         
         '''
         Validate OB path.
@@ -443,12 +435,11 @@ class Backend(QObject):
                                         wcs_out, shape_out=shape_out,
                                         reproject_function=reproject_interp)
         
-        mose = [skys, wcs_out, array]
 
         print("Sending skys to front end...")
         # self.thread.prog = (50, "Sending skys to front end...")
         #self.signal_progress.emit((50, "Sending skys to front end..."))
-        self.signal_plot.emit(mose)
+        self.signal_plot.emit(skys, wcs_out, array)
 
     def send_skyfov(self, date):
 
@@ -456,8 +447,8 @@ class Backend(QObject):
         self.signal_skyfov.emit(sky[0].coords.ra.value, 
                                 sky[0].coords.dec.value, self.fov)
         
-    def pa_calculator(self, ra, dec):
-        p = parallactic_angle(ra, dec)
+    def pa_calculator(self, ra: str, dec: str, time: str):
+        p = parallactic_angle(ra, dec, time)
         self.signal_send_pa.emit(p)
 
         

@@ -77,7 +77,7 @@ def sky_init(eph, fov, hips, catalog, filter):
     return skys
 
     
-def sky_process(skys):
+def sky_process(skys, fov):
     '''
     Receives iterable with Sky objects and applies each method.
     skys: array of Sky objects
@@ -90,8 +90,8 @@ def sky_process(skys):
             sky.separate()
         
         print(f'Sky {sky.num} has no sources: {sky.no_sources}')
-        sky.set_query_params()
-        #sky.img_query(fov / 2) # Divided by two because the image query takes a radius.
+        #sky.set_query_params()
+        sky.img_query(fov / 2) # Divided by two because the image query takes a radius.
 
 def query_sky_img(sky):
     '''

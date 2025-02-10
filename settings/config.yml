@@ -35,3 +35,8 @@ OB_PATH: OB_format
 
 NUM_RESULTS: '100'
 
+T_SCALE:
+  UTC: 'utc'
+  UT1: 'ut1'
+  LST: 'lst'
+

@@ -1,6 +1,6 @@
 import sys
 from PyQt5.QtWidgets import QApplication
-from frontend.MainWindow2 import MainWindow
+from frontend.NewMainWindow import MainWindow
 from backend.backend import Backend
 
 
@@ -21,7 +21,7 @@ if __name__ == '__main__':
 
     # Creating an instance of the front and back end windows
     back = Backend()
-    front = MainWindow(back)
+    front = MainWindow()
 
     # Signal connecting
     front.signal_valid_input.connect(back.validation)
@@ -30,12 +30,10 @@ if __name__ == '__main__':
     back.signal_error.connect(front.error)
     back.signal_plot.connect(front.plot)
     back.signal_splot.connect(front.single_plot)
-    back.signal_progress.connect(front.update_progbar)
+    #back.signal_progress.connect(front.update_progbar)
     back.signal_flags.connect(front.update_table)
     back.signal_best.connect(front.update_bestseen)
-    # back.signal_dates.connect(front.update_datebox)
     front.signal_date.connect(back.send_skyfov)
-    back.signal_skyfov.connect(front.plot_fov)
 
 
 
