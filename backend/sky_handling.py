@@ -53,26 +53,32 @@ def sky_init(eph, fov, hips, catalog, filter):
     filter: str
     '''
 
-    if fov <= 1:
-        fov += 1
-    else:
-        pass
-    
     i = 0
     skys = []
 
-    # Amplifies FOV by 1 arcminute to have search results.
-        
-    print(f'Using small FOV {fov}... Amplifying by 1 arcmin.')
-    for RA, DEC, date in tqdm(zip(eph['RA'], eph['Dec'], eph['Date']), total=len(eph)):
-        c = SkyCoord(ra=RA*u.degree, dec=DEC*u.degree, frame='icrs')
-        v = Vizier(catalog=catalog, row_limit=-1, columns=['all'],
-                column_filters=filter) # SDSS16
-        result = v.query_region(coordinates=c, width=Angle(fov, u.arcminute), 
-                                height=Angle(fov, u.arcminute), frame='icrs')
-        sky = Sky(i, result, c, date, catalog, hips, fov)
-        skys.append(sky)
-        i += 1
+    if fov <= 1:
+        # Amplifies FOV by 1 arcminute to have search results.
+        print(f'Using small FOV {fov}... Amplifying by 1 arcmin.')
+        for RA, DEC, date in tqdm(zip(eph['RA'], eph['Dec'], eph['Date']), total=len(eph)):
+            c = SkyCoord(ra=RA*u.degree, dec=DEC*u.degree, frame='icrs')
+            v = Vizier(catalog=catalog, row_limit=-1, columns=['all'],
+                    column_filters=filter) # SDSS16
+            result = v.query_region(coordinates=c, width=Angle(fov+1, u.arcminute), 
+                                    height=Angle(fov+1, u.arcminute), frame='icrs')
+            sky = Sky(i, result, c, date, catalog, hips, fov)
+            skys.append(sky)
+            i += 1
+    else:
+        for RA, DEC, date in tqdm(zip(eph['RA'], eph['Dec'], eph['Date']), total=len(eph)):
+            c = SkyCoord(ra=RA*u.degree, dec=DEC*u.degree, frame='icrs')
+            v = Vizier(catalog=catalog, row_limit=-1, columns=['all'],
+                    column_filters=filter) # SDSS16
+            result = v.query_region(coordinates=c, width=Angle(fov, u.arcminute), 
+                                    height=Angle(fov, u.arcminute), frame='icrs')
+            sky = Sky(i, result, c, date, catalog, hips, fov)
+            skys.append(sky)
+            i += 1
+    
         
     return skys
 
@@ -133,22 +139,43 @@ def single_sky_query(ra, dec, fov, catalog, filter):
 
     if fov <= 1:
         fov += 1
+        print("Small FOV... Amplifying FOV by 1...")
     else:
         pass
 
-    c = SkyCoord(f'{ra} {dec}', frame='icrs')
-    v = Vizier(catalog=catalog, row_limit=-1, columns=['all'],
-                column_filters=filter) 
+    if type(ra) == str:
+        c = SkyCoord(f'{ra} {dec}', frame='icrs', unit=(u.hourangle, u.deg))
+    else:
+        c = SkyCoord(f'{ra} {dec}', frame='icrs', unit=(u.deg, u.deg))
+
+    v = Vizier(catalog=catalog, row_limit=-1, columns=['all']) 
     result = v.query_region(coordinates=c, width=Angle(fov, u.arcminute), 
                             height=Angle(fov, u.arcminute), frame='icrs')
 
-    return result
+    return c, result, catalog
 
-def single_sky_flag():
-    pass
+def single_sky_flag(target, result, catalog):
+    content = []
+
+    for star in result[0]:
+        s = SkyCoord(f'{star[config["CATALOG"][catalog]["ra"]]} {star[config["CATALOG"][catalog]["dec"]]}', 
+                     frame='icrs', unit=(u.deg, u.deg))
+        d = s.separation(target)
+
+        if d < 0.5 * u.arcmin:
+            info = {
+            'ra': star["RA_ICRS"],
+            'dec': star["DE_ICRS"],
+            'mag': star['gmag'],
+            'dist': d,
+            'date': Time('2000-01-01 00:00:00', scale='utc')
+        }
+
+            content.append(info)
+    return content
 
 
-def get_img(fov, ra, dec, hips, rot):
+def get_img(ra, dec, hips, rot):
     
         '''
         fov: int.
@@ -157,7 +184,10 @@ def get_img(fov, ra, dec, hips, rot):
         querys a FITS file from the DSS.
         '''
 
-        coord = SkyCoord(f"{ra} {dec}", unit=(u.hourangle, u.deg), frame='icrs')
+        if type(ra) == str:
+            coord = SkyCoord(f"{ra} {dec}", unit=(u.hourangle, u.deg), frame='icrs')
+        else:
+            coord = SkyCoord(f"{ra} {dec}", unit=(u.deg, u.deg), frame='icrs')
 
         query_params = { 
          'hips': hips,
@@ -178,7 +208,16 @@ def get_img(fov, ra, dec, hips, rot):
 
         img_data = hdu.data
         
-        return coord, fov, wcs, img_data
+        return coord, wcs, img_data
+
+
+def name_query(name, fov, catalog, filter):
+    v = Vizier(catalog=catalog, row_limit=-1, columns=['all'],
+            column_filters=filter)
+    result = v.query_region(name, width=Angle(fov, u.arcminute), 
+                                height=Angle(fov, u.arcminute), frame='icrs')
+    return result
+
 
 def query_sky_object(sky_obj):
     return sky_obj.img_query()

@@ -80,6 +80,9 @@ class MainWindow(QDialog):
         self.createOBBox1()
         self.createOBBox2()
         self.createOBBox3()
+        self.createNameBox1()
+        self.createNameBox2()
+        self.createNameBox3()
         self.createTabBox()
         self.createPlotBox()
         self.createTableBox()
@@ -285,9 +288,6 @@ class MainWindow(QDialog):
         self.dec_sign.setPlaceholderText('±')
         self.dec_sign.setFixedWidth(15)
 
-        self.name_label = QLabel('Name', self)
-        self.name_inp = QLineEdit('', self)
-        self.name_inp.setPlaceholderText('e.g. NGC 4755')
 
         
 
@@ -300,12 +300,10 @@ class MainWindow(QDialog):
         label_vbox = QVBoxLayout()
         label_vbox.addWidget(self.ra_label)
         label_vbox.addWidget(self.dec_label)
-        label_vbox.addWidget(self.name_label)
 
         input_vbox = QVBoxLayout()
         input_vbox.addWidget(self.ra)
         input_vbox.addLayout(dec_hbox)
-        input_vbox.addWidget(self.name_inp)
 
         self.coord_box1.addLayout(label_vbox)
         self.coord_box1.addLayout(input_vbox)
@@ -530,6 +528,100 @@ class MainWindow(QDialog):
         self.ob_box3.addLayout(label_vbox)
         self.ob_box3.addLayout(input_vbox)
 
+    def createNameBox1(self):
+
+        self.name_label = QLabel('Name', self)
+        self.name_inp = QLineEdit('', self)
+        self.name_inp.setPlaceholderText('e.g. NGC 4755')
+
+        self.name_box1 = QHBoxLayout()
+        self.name_box1.addWidget(self.name_label)
+        self.name_box1.addWidget(self.name_inp)
+
+    def createNameBox2(self):
+        self.name_box2 = QHBoxLayout()
+        # self.coord_box2.addLayout(self.rot_hbox)
+        self.rot_name_inp = QLineEdit(self)
+        self.rot_name_inp.setText('0')
+        self.rot_name_label = QLabel('Rotation (deg)', self)
+
+        self.rot_name_button = QPushButton('Calculate PA')
+        self.rot_name_button.clicked.connect(self.calculate_pa)
+
+        self.time_name_label = QLabel('Time', self)
+        self.time_name_inp = QDateTimeEdit(self, calendarPopup=False)
+        self.time_name_inp.setDisplayFormat(("yyyy-MM-dd HH:mm:ss"))
+        self.time_name_cbox = QComboBox()
+
+        time_scales = [
+            key for key in config['T_SCALE'].keys()
+        ]
+        self.time_name_cbox.addItems(time_scales)
+
+        self.rot_name_hbox = QHBoxLayout()
+        self.rot_name_hbox.addWidget(self.rot_name_inp)
+        self.rot_name_hbox.addWidget(self.rot_name_button)
+
+        self.time_name_hbox = QHBoxLayout()
+        self.time_name_hbox.addWidget(self.time_name_inp)
+        self.time_name_hbox.addWidget(self.time_name_cbox)
+
+        label_vbox = QVBoxLayout()
+        input_vbox = QVBoxLayout()
+
+        label_vbox.addWidget(self.rot_name_label)
+        label_vbox.addWidget(self.time_name_label)
+
+        input_vbox.addLayout(self.rot_name_hbox)
+        input_vbox.addLayout(self.time_name_hbox)
+
+        self.name_box2.addLayout(label_vbox)
+        self.name_box2.addLayout(input_vbox)
+
+    def createNameBox3(self):
+        self.name_box3 = QHBoxLayout()
+        
+        # Instrument scroll menu
+        self.inst_name_label = QLabel('Instrument', self)
+        self.inst_name_cbox = QComboBox()
+        instruments = [
+            key for key in config['INSTRUMENT'].keys()
+        ]
+
+        self.inst_name_cbox.addItems(instruments)
+
+        # Catalog scroll menu
+        self.cat_name_label = QLabel('Catalog', self)
+        self.cat_name_cbox = QComboBox()
+        cats= [
+            key for key in config['CATALOG'].keys()
+        ]
+
+        self.cat_name_cbox.addItems(cats)
+
+        # HIPS Survey scroll menu
+        self.hips_name_label = QLabel('HIPS Survey', self)
+        hips = [
+            key for key in config['HIPS_SURVEY'].keys()
+        ]
+        self.hips_name_cbox = QComboBox()
+        self.hips_name_cbox.addItems(hips)
+        self.hips_name_cbox.setCurrentIndex(1)
+
+        label_vbox = QVBoxLayout()
+        input_vbox = QVBoxLayout()
+
+        label_vbox.addWidget(self.inst_name_label, alignment=Qt.AlignCenter)
+        label_vbox.addWidget(self.cat_name_label, alignment=Qt.AlignCenter)
+        label_vbox.addWidget(self.hips_name_label, alignment=Qt.AlignCenter)
+
+        input_vbox.addWidget(self.inst_name_cbox, alignment=Qt.AlignCenter)
+        input_vbox.addWidget(self.cat_name_cbox, alignment=Qt.AlignCenter)
+        input_vbox.addWidget(self.hips_name_cbox, alignment=Qt.AlignCenter)
+
+        self.name_box3.addLayout(label_vbox)
+        self.name_box3.addLayout(input_vbox)
+
     def createTabBox(self):
         self.tab = QTabWidget()
 
@@ -565,9 +657,20 @@ class MainWindow(QDialog):
         ob_box.setColumnStretch(2, 1)
         ob_tab.setLayout(ob_box)
 
+        name_tab = QWidget()
+        name_box = QGridLayout()
+        name_box.addLayout(self.name_box1, 0, 0)
+        name_box.addLayout(self.name_box2, 0, 1)
+        name_box.addLayout(self.name_box3, 0, 2)
+        name_box.setColumnStretch(0, 1)
+        #coord_box.setColumnStretch(1, 1)
+        name_box.setColumnStretch(2, 1)
+        name_tab.setLayout(name_box)
+
         self.tab.addTab(targ_tab, "Moving Target")
         self.tab.addTab(ob_tab, "OB ID")
         self.tab.addTab(coord_tab, "Coordinates")
+        self.tab.addTab(name_tab, "Name")
 
     def createButtonGroup(self):
         self.button_grid = QGridLayout()
@@ -625,12 +728,25 @@ class MainWindow(QDialog):
             inputs['hips'] = (self.hips_ob_cbox.currentText())
             
             self.signal_valid_input.emit(inputs)
-        else:
+        elif self.tab.currentIndex() == 2:
             inputs = {}
 
             inputs['info'] = 'coords'
             inputs['ra'] = self.ra.dateTime().toString("HH:mm:ss")
             inputs['dec'] = self.dec_sign.text() + self.dec.text()
+            inputs['name'] = self.name_inp.text()
+            inputs['t_scale'] = self.time_coords_cbox.currentText()
+            inputs['time'] = self.time_coords_inp.dateTime().toString("yyyy-MM-dd HH:mm:ss")
+            inputs['inst'] = self.inst_coords_cbox.currentText()
+            inputs['rot'] = (self.rot_coords_inp.text())
+            inputs['cat'] = (self.cat_coords_cbox.currentText())
+            inputs['hips'] = (self.hips_coords_cbox.currentText())
+
+            self.signal_valid_input.emit(inputs)
+        elif self.tab.currentIndex() == 3:
+            inputs = {}
+
+            inputs['info'] = 'name'
             inputs['name'] = self.name_inp.text()
             inputs['t_scale'] = self.time_coords_cbox.currentText()
             inputs['time'] = self.time_coords_inp.dateTime().toString("yyyy-MM-dd HH:mm:ss")
@@ -744,6 +860,9 @@ class MainWindow(QDialog):
                     self.annotation.set_visible(False)
                     self.canvas.draw_idle()
 
+        else:
+            pass
+
     def single_plot(self, coords, fov, wcs, data):
         '''
         Returns None.
@@ -780,17 +899,17 @@ class MainWindow(QDialog):
         anchor_ra = coords.ra.value - d_deg
         anchor_de = coords.dec.value - d_deg
 
-        if float(self.rot_inp.text()) > 0:
-            angle = -float(self.rot_inp.text())
-        else:
-            angle = float(self.rot_inp.text())
+        #if float(self.rot_inp.text()) > 0:
+        #   angle = -float(self.rot_inp.text())
+        #else:
+        #   angle = float(self.rot_inp.text())
 
-        self.q = Quadrangle((anchor_ra, anchor_de)*u.deg, fov*u.arcmin, fov*u.arcmin,
+        self.q = Quadrangle((anchor_ra, anchor_de)*u.deg, width=fov*u.arcmin, height=fov*u.arcmin,
                     edgecolor='red', facecolor='none',
                     transform=self.ax.get_transform('world'), linewidth=0.8, linestyle='-')
         
-        rotation = transforms.Affine2D().rotate_deg_around(coords.ra.value, coords.dec.value, angle)
-        self.q.set_transform(rotation + self.ax.get_transform('world'))
+        #rotation = transforms.Affine2D().rotate_deg_around(coords.ra.value, coords.dec.value, angle)
+        #self.q.set_transform(rotation + self.ax.get_transform('world'))
         self.ax.add_patch(self.q)
     
         

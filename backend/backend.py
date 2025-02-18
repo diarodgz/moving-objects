@@ -1,4 +1,5 @@
-from backend.sky_handling import query, sky_process, sky_init, get_img, best_seen
+from backend.sky_handling import (query, sky_process, sky_init, 
+                                  get_img, best_seen, single_sky_flag, single_sky_query)
 from PyQt5.QtCore import pyqtSignal, QObject, QThread, QRunnable, QThreadPool
 import concurrent.futures
 from datetime import datetime
@@ -10,7 +11,7 @@ from backend.ob import read_ob, read_eph, process_eph, process_desc
 from backend.tools import parallactic_angle
 import astropy.units as u
 from astropy.time import Time
-from astropy.coordinates import EarthLocation
+from astropy.coordinates import EarthLocation, SkyCoord
 import os
 import yaml
 import psutil
@@ -104,6 +105,8 @@ class Backend(QObject):
             self.validate_coords(**inputs)
         elif inputs['info'] == 'ob':
             self.validate_ob(**inputs)
+        else:
+            self.validate_name(**inputs)
 
     def validate_target(self, info, id, start, end, t_scale, step, step_u, n_result,
                         inst, cat, hips):
@@ -196,7 +199,7 @@ class Backend(QObject):
         if startTime < endTime or lst_apparent_start < lst_apparent_end:
             return True
         else:
-            self.signal_error.emit("Invalid Date.")
+            self.signal_error.emit("Start date must be before end date.")
             print(f'Invalid date range.')
             return False
 
@@ -226,7 +229,7 @@ class Backend(QObject):
                 
     
         # Valildating DEC:
-        if int(dec_list[0][1:]) <= -90 or int(dec_list[0]) >= 90:
+        if int(dec_list[0]) <= -90 or int(dec_list[0]) >= 90:
             self.validated = False
             self.signal_error.emit("Invalid dd value for dd:mm:ss format.")
         elif int(dec_list[1]) > 59:
@@ -236,6 +239,7 @@ class Backend(QObject):
             self.validated = False
             self.signal_error.emit("Invalid ss value for dd:mm:ss format.")
         else:
+            self.validated = True
             print("Valid DEC.")
         
         if self.validated:
@@ -251,7 +255,7 @@ class Backend(QObject):
                 if self.inst == key:
                     self.fov = config['INSTRUMENT'][self.inst]
 
-            self.single_img(self.fov, ra, dec)
+            self.single_img(ra, dec)
         else:
             print(f"Inputs invalid.")
 
@@ -302,7 +306,25 @@ class Backend(QObject):
             #self.signal_progress.emit((15, "Validated OB..."))
             self.load_ob()
 
-    def load_ob(path):
+    def validate_name(self, info, name, t_scale, time, inst, rot, cat, hips):
+
+        try:
+            coord = SkyCoord.from_name(name)
+        except:
+            print(f"Could not find object with id {name}.")
+            self.signal_error.emit(f"Could not find object with id {name}.")
+        else:
+            self.inst = inst
+            self.fov = config['INSTRUMENT'][self.inst]
+            self.rot = rot
+            self.cat = cat
+            self.hips = hips
+
+            print("Validated name...")
+            self.single_img(coord.ra.value, coord.dec.value)
+
+
+    def load_ob(self, path):
         print("WIP")
     
     def retrieve_eph(self, inputs: dict) -> None:
@@ -334,25 +356,37 @@ class Backend(QObject):
             self.sky_generator(eph)
 
 
-    def single_img(self, ra, dec, fov):
+    def single_img(self, ra, dec):
         '''
         Query a single image.
 
         ---------------
         Parameters
         ---------------
-        ra: str
+        ra: str or int
         dec: str
-        fov: int
         '''
-
-        coords, fov, wcs, data = get_img(ra, dec, fov, config['HIPS_SURVEY'][self.hips], self.rot)
-        self.signal_splot.emit(coords, fov, wcs, data)
-
+        coords, wcs, data = get_img(ra, dec, config['HIPS_SURVEY'][self.hips], self.rot)
+        self.signal_splot.emit(coords, self.fov, wcs, data)
         print("Sending plot to front end...")
-        # self.thread.prog = (60, "Sending plot to front end...")
+
+        try:
+            target, result, catalog = single_sky_query(ra, dec, self.fov, self.cat, config['CATALOG'][self.cat]['filter'])
+        except IndexError as e:
+            self.signal_error.emit(f"Something was wrong with the single sky query.")
+        else:
+            print(f"Queried sky region...")
+
+        try:
+            content = single_sky_flag(target, result, catalog)
+        except IndexError as e:
+            print(f"Table empty.")
+        else:
+            mag = config['CATALOG'][self.cat]['flag']
+            self.signal_flags.emit(content, mag)
+
+        #self.thread.prog = (60, "Sending plot to front end...")
         #self.signal_progress.emit((60, "Sending plot to front end..."))
-    
 
 
     def sky_generator(self, eph):
