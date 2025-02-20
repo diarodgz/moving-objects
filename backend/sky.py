@@ -1,4 +1,5 @@
 from astropy.coordinates import SkyCoord
+from astropy.time import Time
 import astropy.units as u
 from astropy.io import fits
 from astropy.wcs import WCS
@@ -203,6 +204,30 @@ class Sky:
         }
 
         return info
+    
+    def fov_stars(self):
+        '''
+        Saves the magnitude, position and distance of each source found in the
+        self.source catalog to display on the GUI table.
+        '''
+        content = []
+
+        for star in self.result[0]:
+            s = SkyCoord(f'{star[config["CATALOG"][self.catalog]["ra"]]} {star[config["CATALOG"][self.catalog]["dec"]]}', 
+                         frame='icrs', unit=(u.deg, u.deg))
+            d = s.separation(self.coords)
+
+            if d < 0.5 * u.arcmin:
+                info = {
+                    'ra': s.ra.value,
+                    'dec': s.dec.value,
+                    'mag': [key for key in config['CATALOG'][self.catalog]['filter'].keys()][0],
+                    'dist': d,
+                    'date': Time('2000-01-01 00:00:00', scale='utc')
+                }
+
+                content.append(info)
+        return content
         
     def separate(self):
         '''

@@ -24,7 +24,8 @@ from PyQt5.QtWidgets import (
     QDateTimeEdit,
     QTabWidget,
     QGridLayout,
-    QStyleFactory
+    QStyleFactory,
+    QCheckBox
 )
 
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
@@ -87,6 +88,7 @@ class MainWindow(QDialog):
         self.createPlotBox()
         self.createTableBox()
         self.createButtonGroup()
+        self.createPlotOption()
 
         #self.title = QLabel("Moving Object Tool", self)
         #self.title.setStyleSheet("font: bold 30px")
@@ -94,18 +96,21 @@ class MainWindow(QDialog):
         self.mainLayout = QGridLayout()
         self.mainLayout.addWidget(self.tab, 0, 0, 1, 3)
         self.mainLayout.addLayout(self.plotBox, 1, 0)
+        self.mainLayout.addWidget(self.source_check, 2, 0)
         self.mainLayout.addLayout(self.tableBox, 1, 1)
         self.mainLayout.addLayout(self.button_grid, 2, 1)
         self.mainLayout.setColumnStretch(0, 400)
         self.setLayout(self.mainLayout)
 
     def createTopLayout(self):
-        self.title = QLabel("Moving Object Tool", self)
-        self.title.setStyleSheet("font: bold 30px")
+        #self.title = QLabel("Moving Object Tool", self)
+        #self.title.setStyleSheet("font: bold 30px")
         
         self.best_seen = QLabel('', self)
 
-        
+    def createPlotOption(self):
+        self.source_check = QCheckBox('Highlight all sources in FOV', self)
+        self.source_check.stateChanged.connect(self.activate_sources)
 
     def createLeftGroupBox(self):
 
@@ -691,8 +696,11 @@ class MainWindow(QDialog):
 
     def clicked_query(self):
         '''
-        Response to clicking the query button.
+        Response to clicking the query button. Emits a signal with 
+        all the inputs.
         '''
+
+        self.source_check.setChecked(False)
 
         if self.tab.currentIndex() == 0:
             inputs = {}
@@ -827,6 +835,10 @@ class MainWindow(QDialog):
         print("Succesfully plotted mosaic.")
 
     def motion_hover(self, event):
+        '''
+        Determines whether or not the mouse is hovering over the
+        target position to display the FOV box for a moving target.
+        '''
 
         if self.ax != 'Empty' and not self.single_img:
             annotation_visibility = self.annotation.get_visible()
@@ -922,6 +934,12 @@ class MainWindow(QDialog):
         print("Succesfully plotted image.")
 
     def update_table(self, content, mag):
+        '''
+        content: list of dict objects.
+        mag: str.
+
+        Updates the table with the information of the surrounding sources.
+        '''
 
         self.table.setRowCount(len(content))
 
@@ -934,7 +952,12 @@ class MainWindow(QDialog):
             self.table.setItem(row, 4, QTableWidgetItem(item['date'].value.rstrip("000").rstrip(".")))
             row += 1
 
+
     def calculate_pa(self):
+        '''
+        Sends the time and coordinates to the backend to calculate the
+        parallactic angle.
+        '''
         
         if self.tab.currentIndex() == 0:
             self.signal_pa.emit(self.datetime_start.dateTime().toString("yyyy-MM-dd HH:mm:ss"),
@@ -949,8 +972,46 @@ class MainWindow(QDialog):
     def update_bestseen(self, best):
         self.best_seen.setText(best)
 
+    def activate_sources(self, checked):
+        '''
+        Determines whether or not the checkbox is checked to
+        plot the scatter for the surrounding sources.
+        '''
+        
+        if checked and self.tab.currentIndex() == 0 and self.skys is not None:
+            self.s = []  # Store references to plotted points
+            for sky in self.skys:
+                scatter_plot, = self.ax.plot(
+                    sky.result[0][config['CATALOG'][self.cat_cbox.currentText()]['ra']], 
+                    sky.result[0][config['CATALOG'][self.cat_cbox.currentText()]['dec']], 
+                    'o', color='red', mfc='None', 
+                    transform=self.ax.get_transform('world'), 
+                    ms=20, mew=0.5
+                )
+                self.s.append(scatter_plot)  # Append to the list
+            self.canvas.draw_idle()
+        else:
+            if hasattr(self, 's'):  # Ensure self.s exists before trying to remove
+                for scatter in self.s:
+                    scatter.remove()
+                self.s = []  # Clear the list after removing plots
+                self.canvas.draw_idle()
+
+        if self.tab.currentIndex() == 1:
+            pass
+        else:
+            pass
+
+        if self.tab.currentIndex() == 2:
+            pass
+        else:
+            pass
+
     def clicked_exit(self):
-        self.exit()
+        '''
+        Allows the program to close upon clicking the exit button.
+        '''
+        self.close()
 
     def update_rot(self, angle):
 
@@ -960,6 +1021,13 @@ class MainWindow(QDialog):
             self.rot_ob_inp.setText(str(angle))
         else:
             self.rot_coords_inp.setText(str(angle))
+
+    def keyPressEvent(self, event):
+        '''
+        Allow to press the query button with the enter key.
+        '''
+        if event.key() == Qt.Key_Enter:
+            self.query_button.click()
 
     def error(self, msg):
         # Dialogue box appears in case of error.

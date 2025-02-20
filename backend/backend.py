@@ -20,6 +20,28 @@ config_path = os.path.join('settings', 'config.yml')
 with open(config_path, 'r') as f:
     config = yaml.safe_load(f)
 
+class Worker(QThread):
+    finished = pyqtSignal(object)  # Signal to send results
+    error = pyqtSignal(str)  # Signal to send errors
+
+    def __init__(self, data):
+        super().__init__()
+        self.data = data
+
+    def run(self):
+        try:
+            # Simulate a long task
+            import time
+            time.sleep(5)  # Simulated delay
+
+            # Process the data (replace with actual processing logic)
+            result = f"Processed: {self.data}"
+
+            # Emit the finished signal with the result
+            self.finished.emit(result)
+        except Exception as e:
+            self.error.emit(str(e))
+
 
 class Backend(QObject):
 
@@ -128,6 +150,7 @@ class Backend(QObject):
             
         if self.validate_datetime(start, end):
             print("Validated datetime...")
+            self.validated = True
             # self.thread.prog = (10, "Validated datetime...")
             #self.signal_progress.emit((10, "Validated datetime..."))
         else:
@@ -139,6 +162,7 @@ class Backend(QObject):
             self.validated = False
             self.signal_error.emit("Step must be an integer.")
         else:
+            self.validated = True
             step_units = step + step_u
 
         # Validating n_result input and converting to int.
@@ -146,6 +170,7 @@ class Backend(QObject):
             self.validated = False
             self.signal_error.emit("N. Results must be an integer.")
         else:
+            self.validated = True
             n = int(n_result)
 
 
@@ -441,9 +466,19 @@ class Backend(QObject):
 
 
     def flagging(self, skys: list):
+        content = []
 
-        print("Flagging bright objects...")
-        content = list(map(lambda sky: sky.flag_bright() if not sky.no_sources else 'no sources', skys)) # Flags bright objects.
+        try:
+            print("Flagging objects...")
+            for sky in skys:
+                c = sky.fov_stars()
+                content += c
+        except IndexError as e:
+            print("Catalog empty. Try another.")
+            self.signal_error.emit("Catalog empty. Try another.")
+
+        print(content)
+         # Flags objects.
         mag = config['CATALOG'][self.cat]['flag']
         self.signal_flags.emit(content, mag)
 
