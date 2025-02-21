@@ -21,7 +21,7 @@ with open(config_path, 'r') as f:
     config = yaml.safe_load(f)
 
 
-class Backend(QObject):
+class Worker(QThread):
 
     '''
     Class in charge of carrying out all of the processing. Inherits
@@ -57,18 +57,19 @@ class Backend(QObject):
     signal_plot = pyqtSignal(object, object, object)
     signal_splot = pyqtSignal(object, float, object, object)
     signal_error = pyqtSignal(str)
-    signal_progress = pyqtSignal(tuple)
+    signal_progress = pyqtSignal(int, str)
     signal_flags = pyqtSignal(list, str)
-    signal_finished = pyqtSignal()
+    finished = pyqtSignal()
     signal_best = pyqtSignal(str)
     signal_datebox = pyqtSignal(list)
     signal_dates = pyqtSignal(list)
     signal_send_pa = pyqtSignal(float)
     signal_skyfov =pyqtSignal(int, int, int)
 
-    def __init__(self, inst=None, rot=None, cat=None, validated=None, skys=None,
+    def __init__(self, inputs, inst=None, rot=None, cat=None, validated=None, skys=None,
                  fov=None, hips=None):
         super().__init__()
+        self.inputs = inputs
         self.validated = True
         self.inst = None
         self.rot = None
@@ -79,7 +80,7 @@ class Backend(QObject):
         self.hips = None
         self.t_scale = None
 
-    def validation(self, inputs: dict) -> None:
+    def run(self) -> None:
 
         '''
         Validates the inputs for: target name, start and end datetime format,
@@ -96,17 +97,17 @@ class Backend(QObject):
         #self.thread = BackThread(self.signal_progress, (0, "Validating inputs..."))
         #self.thread.start()
 
-        #self.signal_progress.emit((0, "Validating inputs..."))
+        self.signal_progress.emit(0, "Validating inputs...")
         print("Validating inputs...")
 
-        if inputs['info'] == 'targ':
-            self.validate_target(**inputs)
-        elif inputs['info'] == 'coords':
-            self.validate_coords(**inputs)
-        elif inputs['info'] == 'ob':
-            self.validate_ob(**inputs)
+        if self.inputs['info'] == 'targ':
+            self.validate_target(**self.inputs)
+        elif self.inputs['info'] == 'coords':
+            self.validate_coords(**self.inputs)
+        elif self.inputs['info'] == 'ob':
+            self.validate_ob(**self.inputs)
         else:
-            self.validate_name(**inputs)
+            self.validate_name(**self.inputs)
 
     def validate_target(self, info, id, start, end, t_scale, step, step_u, n_result,
                         inst, cat, hips):
@@ -122,7 +123,7 @@ class Backend(QObject):
 
         print("Validating target...")
         # self.thread.prog = (5, "Validating target...")
-        #self.signal_progress.emit((5, "Validating target..."))
+        self.signal_progress.emit(5, "Validating target...")
 
         # Validating time.
             
@@ -130,7 +131,7 @@ class Backend(QObject):
             print("Validated datetime...")
             self.validated = True
             # self.thread.prog = (10, "Validated datetime...")
-            #self.signal_progress.emit((10, "Validated datetime..."))
+            self.signal_progress.emit(10, "Validated datetime...")
         else:
             self.validated = False
 
@@ -172,7 +173,7 @@ class Backend(QObject):
             self.t_scale = t_scale
             
 
-            #self.signal_progress.emit((15, "Validated inputs..."))
+            self.signal_progress.emit(15, "Validated inputs...")
             # self.thread.prog = (15, "Validated inputs...")
             self.retrieve_eph(params_start)
             
@@ -225,7 +226,7 @@ class Backend(QObject):
         
         print("Validating coordinates...")
         # self.thread.prog = (20, "Validating coordinates...")
-        #self.signal_progress.emit((20, "Validating coordinates..."))
+        self.signal_progress.emit(20, "Validating coordinates...")
 
 
         dec_list = dec.lstrip('-').lstrip('+').split(':')
@@ -248,7 +249,7 @@ class Backend(QObject):
         if self.validated:
             print("Validated coordinates...")
             # self.thread.prog = (25, "Validated coordinates...")
-            #self.signal_progress.emit((25, "Validated coordinates..."))
+            self.signal_progress.emit(25, "Validated coordinates...")
             self.inst = inst
             self.cat = cat
             self.hips = hips
@@ -287,7 +288,7 @@ class Backend(QObject):
         
         print("Validating OB...")
         # self.thread.prog = (10, "Validated OB...")
-        #self.signal_progress.emit((10, "Validated OB..."))
+        self.signal_progress.emit(10, "Validated OB...")
         
         path = os.path.join(config['OB_PATH'], id)
 
@@ -306,7 +307,7 @@ class Backend(QObject):
 
             print("Validated OB.")
             # self.thread.prog = (15, "Validated OB...")
-            #self.signal_progress.emit((15, "Validated OB..."))
+            self.signal_progress.emit(15, "Validated OB...")
             self.load_ob()
 
     def validate_name(self, info, name, t_scale, time, inst, rot, cat, hips):
@@ -324,6 +325,7 @@ class Backend(QObject):
             self.hips = hips
 
             print("Validated name...")
+            self.signal_progress.emit(25, 'Validated name/ID...')
             self.single_img(coord.ra.value, coord.dec.value)
 
 
@@ -355,7 +357,7 @@ class Backend(QObject):
 {eph['Date'][len(eph) - 1]}")
             
             # self.thread.prog = (20, "Retrieved ephemeris...")
-            #self.signal_progress.emit((20, "Retrieved ephemeris..."))
+            self.signal_progress.emit(20, "Retrieved ephemeris...")
             self.sky_generator(eph)
 
 
@@ -369,9 +371,6 @@ class Backend(QObject):
         ra: str or int
         dec: str
         '''
-        coords, wcs, data = get_img(ra, dec, config['HIPS_SURVEY'][self.hips], self.rot)
-        self.signal_splot.emit(coords, self.fov, wcs, data)
-        print("Sending plot to front end...")
 
         try:
             target, result, catalog = single_sky_query(ra, dec, self.fov, self.cat, config['CATALOG'][self.cat]['filter'])
@@ -379,17 +378,25 @@ class Backend(QObject):
             self.signal_error.emit(f"Something was wrong with the single sky query.")
         else:
             print(f"Queried sky region...")
+            self.signal_progress.emit(50, 'Queried sky region...')
 
         try:
             content = single_sky_flag(target, result, catalog)
         except IndexError as e:
             print(f"Table empty.")
+            self.signal_error.emit("Table empty.")
         else:
             mag = config['CATALOG'][self.cat]['flag']
+            self.signal_progress.emit(75, 'Flagging objects...')
             self.signal_flags.emit(content, mag)
 
+        coords, wcs, data = get_img(ra, dec, config['HIPS_SURVEY'][self.hips], self.rot)
+        self.signal_splot.emit(coords, self.fov, wcs, data)
+        self.signal_progress.emit(100, 'Sending plot to front end...')
+        print("Sending plot to front end...")
+
         #self.thread.prog = (60, "Sending plot to front end...")
-        #self.signal_progress.emit((60, "Sending plot to front end..."))
+            
 
 
     def sky_generator(self, eph):
@@ -414,7 +421,7 @@ class Backend(QObject):
                 self.fov = config['INSTRUMENT'][self.inst]
 
         # self.thread.prog = (25, "Generating skys...")
-        #self.signal_progress.emit((25, "Generating skys..."))
+        self.signal_progress.emit(25, "Generating skys...")
         print("Generating skys...")
 
         try:
@@ -424,7 +431,7 @@ class Backend(QObject):
         else:
             print("Skys generated.")
             # self.thread.prog = (30, "Generated skys...")
-            #self.signal_progress.emit((30, "Generated skys..."))
+            self.signal_progress.emit(30, "Generated skys...")
             print("Processing skys...")
 
         try:
@@ -435,7 +442,7 @@ class Backend(QObject):
         else:
             print("Skys processed.")
             # self.thread.prog = (35, "Processed skys...")
-            #self.signal_progress.emit((35, "Processed skys..."))
+            self.signal_progress.emit(35, "Processed skys...")
             self.send_mosaic(skys)
             self.flagging(skys)
             self.signal_dates.emit([sky.date.value for sky in skys])
@@ -448,6 +455,7 @@ class Backend(QObject):
 
         try:
             print("Flagging objects...")
+            self.signal_progress.emit(85, "Flagging objects...")
             for sky in skys:
                 c = sky.fov_stars()
                 content += c
@@ -485,7 +493,7 @@ class Backend(QObject):
 
         print("Sending skys to front end...")
         # self.thread.prog = (50, "Sending skys to front end...")
-        #self.signal_progress.emit((50, "Sending skys to front end..."))
+        self.signal_progress.emit(50, "Sending skys to front end...")
         self.signal_plot.emit(skys, wcs_out, array)
 
     def send_skyfov(self, date):
@@ -497,12 +505,13 @@ class Backend(QObject):
     def pa_calculator(self, ra: str, dec: str, time: str):
         p = parallactic_angle(ra, dec, time)
         self.signal_send_pa.emit(p)
-
         
 
     def send_best_seen(self, skys):
         best_seen_dates = best_seen(skys)
         self.signal_best.emit(best_seen_dates)
+        self.signal_progress.emit(100, "Sending best dates...")
+        self.finished.emit()
 
 
 

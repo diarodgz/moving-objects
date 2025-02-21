@@ -1,7 +1,7 @@
 import sys
 from PyQt5.QtWidgets import QApplication
 from frontend.NewMainWindow import MainWindow
-from backend.backend import Backend
+from backend.NewBackend import Backend
 
 
 # Authors: Michaël Marsset, Claudia Rodríguez. 2024
@@ -24,16 +24,16 @@ if __name__ == '__main__':
     front = MainWindow()
 
     # Signal connecting
-    front.signal_valid_input.connect(back.validation)
-    front.signal_pa.connect(back.pa_calculator)
-    back.signal_send_pa.connect(front.update_rot)
+    front.signal_start.connect(back.start_worker)
+    front.signal_pa.connect(back.calculate_pa)
+    back.signal_pangle.connect(front.update_rot)
     back.signal_error.connect(front.error)
     back.signal_plot.connect(front.plot)
     back.signal_splot.connect(front.single_plot)
-    #back.signal_progress.connect(front.update_progbar)
+    back.signal_progress.connect(front.update_progbar)
     back.signal_flags.connect(front.update_table)
     back.signal_best.connect(front.update_bestseen)
-    front.signal_date.connect(back.send_skyfov)
+    #front.signal_date.connect(back.send_skyfov)
 
 
 

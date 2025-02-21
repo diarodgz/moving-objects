@@ -166,7 +166,7 @@ def single_sky_flag(target, result, catalog):
             info = {
             'ra': s.ra.value,
             'dec': s.dec.value,
-            'mag': [key for key in config['CATALOG'][self.catalog]['filter'].keys()][0],
+            'mag': [key for key in config['CATALOG'][catalog]['filter'].keys()][0],
             'dist': d,
             'date': Time('2000-01-01 00:00:00', scale='utc')
         }

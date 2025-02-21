@@ -53,8 +53,7 @@ class MainWindow(QDialog):
     aspect of the program. Very minimal tasks besides organizing GUI
     and preparing inputs to communicate to the backend via signals.
     '''
-    signal_valid_input = pyqtSignal(dict)
-    signal_thread = pyqtSignal(str)
+    signal_start = pyqtSignal(dict)
     signal_pa = pyqtSignal(str, str, str)
     signal_date = pyqtSignal(str)
 
@@ -89,6 +88,8 @@ class MainWindow(QDialog):
         self.createTableBox()
         self.createButtonGroup()
         self.createPlotOption()
+        self.createProgBar()
+        self.createProgCheckBox()
 
         #self.title = QLabel("Moving Object Tool", self)
         #self.title.setStyleSheet("font: bold 30px")
@@ -96,7 +97,7 @@ class MainWindow(QDialog):
         self.mainLayout = QGridLayout()
         self.mainLayout.addWidget(self.tab, 0, 0, 1, 3)
         self.mainLayout.addLayout(self.plotBox, 1, 0)
-        self.mainLayout.addWidget(self.source_check, 2, 0)
+        self.mainLayout.addLayout(self.progcheck_hbox, 2, 0)
         self.mainLayout.addLayout(self.tableBox, 1, 1)
         self.mainLayout.addLayout(self.button_grid, 2, 1)
         self.mainLayout.setColumnStretch(0, 400)
@@ -111,6 +112,24 @@ class MainWindow(QDialog):
     def createPlotOption(self):
         self.source_check = QCheckBox('Highlight all sources in FOV', self)
         self.source_check.stateChanged.connect(self.activate_sources)
+
+    def createProgBar(self):
+
+        self.prog_hbox = QHBoxLayout()
+
+        self.prog = QProgressBar(self)
+        self.prog.setRange(0, 100)
+
+        self.prog_text = QLabel(' ', self)
+
+        self.prog_hbox.addWidget(self.prog_text)
+        self.prog_hbox.addWidget(self.prog)
+
+    def createProgCheckBox(self):
+        self.progcheck_hbox = QHBoxLayout()
+
+        self.progcheck_hbox.addWidget(self.source_check)
+        self.progcheck_hbox.addLayout(self.prog_hbox)
 
     def createLeftGroupBox(self):
 
@@ -718,7 +737,7 @@ class MainWindow(QDialog):
             inputs['cat'] = (self.cat_cbox.currentText())
             inputs['hips'] = (self.hips_cbox.currentText())
 
-            self.signal_valid_input.emit(inputs)
+            self.signal_start.emit(inputs)
         elif self.tab.currentIndex() == 1:
             inputs = {}
 
@@ -735,7 +754,7 @@ class MainWindow(QDialog):
             inputs['cat'] = (self.cat_ob_cbox.currentText())
             inputs['hips'] = (self.hips_ob_cbox.currentText())
             
-            self.signal_valid_input.emit(inputs)
+            self.signal_start.emit(inputs)
         elif self.tab.currentIndex() == 2:
             inputs = {}
 
@@ -750,7 +769,7 @@ class MainWindow(QDialog):
             inputs['cat'] = (self.cat_coords_cbox.currentText())
             inputs['hips'] = (self.hips_coords_cbox.currentText())
 
-            self.signal_valid_input.emit(inputs)
+            self.signal_start.emit(inputs)
         elif self.tab.currentIndex() == 3:
             inputs = {}
 
@@ -763,7 +782,7 @@ class MainWindow(QDialog):
             inputs['cat'] = (self.cat_coords_cbox.currentText())
             inputs['hips'] = (self.hips_coords_cbox.currentText())
 
-            self.signal_valid_input.emit(inputs)
+            self.signal_start.emit(inputs)
 
     def plot(self, skys, wcs, data):
 
@@ -1028,6 +1047,10 @@ class MainWindow(QDialog):
         '''
         if event.key() == Qt.Key_Enter:
             self.query_button.click()
+
+    def update_progbar(self, prog, message):
+        self.prog.setValue(prog)
+        self.prog_text.setText(message)
 
     def error(self, msg):
         # Dialogue box appears in case of error.
