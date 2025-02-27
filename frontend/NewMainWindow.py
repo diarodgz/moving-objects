@@ -54,6 +54,7 @@ class MainWindow(QDialog):
     and preparing inputs to communicate to the backend via signals.
     '''
     signal_start = pyqtSignal(dict)
+    signal_stop = pyqtSignal()
     signal_pa = pyqtSignal(str, str, str)
     signal_date = pyqtSignal(str)
 
@@ -272,6 +273,7 @@ class MainWindow(QDialog):
     def createPlotBox(self):
 
         self.figure = plt.figure()
+        self.figure.tight_layout()
         self.canvas = FigureCanvas(self.figure)
         self.toolbar = NavigationToolbar(self.canvas, self)
         self.ax = 'Empty'
@@ -286,7 +288,7 @@ class MainWindow(QDialog):
         self.tableBox = QHBoxLayout()
 
         labels = [
-            'mag', 'RA (deg)', 'DEC (deg)', 'd (arcmin)', 'Time'
+            'mag', 'RA (hh:mm:ss)', 'DEC (deg)', 'd (arcmin)', 'Time'
         ]
         self.table = QTableWidget()
         self.table.setColumnCount(5)
@@ -304,16 +306,12 @@ class MainWindow(QDialog):
         #self.dec.setDisplayFormat("HH:mm:ss")
 
         self.dec = QLineEdit(self)
-        self.dec.setPlaceholderText('e.g. YYYY-MM-DD')
         #self.dec.setFixedWidth(125)
-        self.dec.setInputMask('00:00:00;0')
+        self.dec.setInputMask('00:00:00;9')
 
-        self.dec_sign = QLineEdit('', self)
-        self.dec_sign.setPlaceholderText('±')
-        self.dec_sign.setFixedWidth(15)
-
-
-        
+        self.dec_sign = QComboBox(self)
+        self.dec_sign.addItems(['+', '-'])
+        self.dec_sign.setFixedWidth(40)
 
         self.coord_box1 = QHBoxLayout()
 
@@ -706,6 +704,7 @@ class MainWindow(QDialog):
         self.exit_button.clicked.connect(self.clicked_exit)
 
         self.stop_button = QPushButton('CANCEL')
+        self.stop_button.clicked.connect(self.stop)
 
         self.button_grid.addWidget(self.exit_button, 0, 0)
         self.button_grid.addWidget(self.query_button, 0, 4)
@@ -720,6 +719,7 @@ class MainWindow(QDialog):
         '''
 
         self.source_check.setChecked(False)
+        self.table.clear()
 
         if self.tab.currentIndex() == 0:
             inputs = {}
@@ -760,7 +760,7 @@ class MainWindow(QDialog):
 
             inputs['info'] = 'coords'
             inputs['ra'] = self.ra.dateTime().toString("HH:mm:ss")
-            inputs['dec'] = self.dec_sign.text() + self.dec.text()
+            inputs['dec'] = self.dec_sign.currentText() + self.dec.text()
             inputs['name'] = self.name_inp.text()
             inputs['t_scale'] = self.time_coords_cbox.currentText()
             inputs['time'] = self.time_coords_inp.dateTime().toString("yyyy-MM-dd HH:mm:ss")
@@ -845,6 +845,24 @@ class MainWindow(QDialog):
 
             self.fovs.append(q)
             self.ax.add_patch(q)
+
+        #arrow_up = FancyArrowPatch((10, 10), (10, 70),
+        #                       color='black', arrowstyle='->',
+        #                       mutation_scale=15, linewidth=1.5,
+        #                       transform=self.ax.get_transform('world'))
+        #
+        #self.ax.add_patch(arrow_up)
+        #self.ax.text(10, 72, 'N', ha='center', va='bottom', fontsize=15, 
+        #            weight='bold', transform=self.ax.get_transform('world'))
+
+
+        #arrow_right = FancyArrowPatch((10, 10), (70, 10),
+        #                            color='black', arrowstyle='->',
+        #                            mutation_scale=15, linewidth=1.5,
+        #                            transform=self.ax.get_transform('world'))
+        #self.ax.add_patch(arrow_right)
+        #self.ax.text(72, 10, 'E', ha='left', va='center', fontsize=15, 
+        #             weight='bold', transform=self.ax.get_transform('world'))
     
         self.figure.add_subplot(self.ax)
 
@@ -922,6 +940,24 @@ class MainWindow(QDialog):
         add_scalebar(self.ax, label="1'", length=1 * u.arcmin, 
                      color='black', label_top=True)
         
+        #arrow_up = FancyArrowPatch((10, 10), (10, 70),
+        #                       color='black', arrowstyle='->',
+        #                       mutation_scale=15, linewidth=1.5,
+        #                       transform=self.ax.get_transform('world'))
+        
+        #self.ax.add_patch(arrow_up)
+        #self.ax.text(10, 72, 'N', ha='center', va='bottom', fontsize=15,
+        #             transform=self.ax.get_transform('world'))#, weight='bold')
+
+
+        #arrow_right = FancyArrowPatch((10, 10), (70, 10),
+        #                            color='black', arrowstyle='->',
+        #                            mutation_scale=15, linewidth=1.5,
+        #                            transform=self.ax.get_transform('world'))
+        #self.ax.add_patch(arrow_right)
+        #self.ax.text(72, 10, 'E', ha='left', va='center', fontsize=15,
+        #             transform=self.ax.get_transform('world'))#, weight='bold')
+        
         
         
         d = (fov / 2) * u.arcmin
@@ -960,6 +996,11 @@ class MainWindow(QDialog):
         Updates the table with the information of the surrounding sources.
         '''
 
+        labels = [
+            'mag', 'RA (hh:mm:ss)', 'DEC (deg)', 'd (arcmin)', 'Time'
+        ]
+        self.table.setColumnCount(5)
+        self.table.setHorizontalHeaderLabels(labels)
         self.table.setRowCount(len(content))
 
         row = 0
@@ -984,9 +1025,12 @@ class MainWindow(QDialog):
         elif self.tab.currentIndex() == 1:
             self.signal_pa.emit(self.datetime_ob_start.dateTime().toString("yyyy-MM-dd HH:mm:ss"),
                             self.datetime_ob_end.dateTime().toString("yyyy-MM-dd HH:mm:ss"))
-        else:
-            self.signal_pa.emit(self.ra.dateTime().toString("HH:mm:ss"), self.dec_sign.text() + self.dec.text(), 
+        elif self.tab.currentIndex() == 2:
+            self.signal_pa.emit(self.ra.dateTime().toString("HH:mm:ss"), self.dec_sign.currentText() + self.dec.text(), 
                                 self.time_coords_inp.dateTime().toString("yyyy-MM-dd HH:mm:ss"))
+        elif self.tab.currentIndex() == 3:
+            self.signal_pa.emit(self.name_inp.text(), 'null', 
+                                self.time_name_inp.dateTime().toString("yyyy-MM-dd HH:mm:ss"))
             
     def update_bestseen(self, best):
         self.best_seen.setText(best)
@@ -1038,8 +1082,10 @@ class MainWindow(QDialog):
             self.rot_inp.setText(str(angle))
         elif self.tab.currentIndex() == 1:
             self.rot_ob_inp.setText(str(angle))
-        else:
+        elif self.tab.currentIndex() == 2:
             self.rot_coords_inp.setText(str(angle))
+        else:
+            self.rot_name_inp.setText(str(angle))
 
     def keyPressEvent(self, event):
         '''
@@ -1051,6 +1097,9 @@ class MainWindow(QDialog):
     def update_progbar(self, prog, message):
         self.prog.setValue(prog)
         self.prog_text.setText(message)
+
+    def stop(self):
+        self.signal_stop.emit()
 
     def error(self, msg):
         # Dialogue box appears in case of error.

@@ -33,6 +33,7 @@ if __name__ == '__main__':
     back.signal_progress.connect(front.update_progbar)
     back.signal_flags.connect(front.update_table)
     back.signal_best.connect(front.update_bestseen)
+    front.signal_stop.connect(back.stop)
     #front.signal_date.connect(back.send_skyfov)
 
 

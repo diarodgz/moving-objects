@@ -161,12 +161,13 @@ def single_sky_flag(target, result, catalog):
         s = SkyCoord(f'{star[config["CATALOG"][catalog]["ra"]]} {star[config["CATALOG"][catalog]["dec"]]}', 
                      frame='icrs', unit=(u.deg, u.deg))
         d = s.separation(target)
- 
+        mag = [key for key in config['CATALOG'][catalog]['filter'].keys()][0]
+         
         if d < 0.5 * u.arcmin:
             info = {
-            'ra': s.ra.value,
-            'dec': s.dec.value,
-            'mag': [key for key in config['CATALOG'][catalog]['filter'].keys()][0],
+            'ra': s.ra.to_string(u.hour),
+            'dec': s.dec.to_string(u.deg),
+            'mag': star[mag],
             'dist': d,
             'date': Time('2000-01-01 00:00:00', scale='utc')
         }

@@ -1,7 +1,13 @@
 from backend.worker import Worker
+from backend.tools import parallactic_angle
+from astropy.coordinates import SkyCoord
+import astropy.units as u
 from PyQt5.QtCore import pyqtSignal, QObject
 
 class Backend(QObject):
+    '''
+    Sends the products from the frontend to the backend.
+    '''
     signal_error = pyqtSignal(str)
     signal_plot = pyqtSignal(object, object, object)
     signal_splot = pyqtSignal(object, float, object, object)
@@ -14,7 +20,7 @@ class Backend(QObject):
 
     def __init__(self):
         super().__init__()
-        self.worker = None  
+        self.worker = None 
 
     def start_worker(self, data):
         self.worker = Worker(data)
@@ -35,9 +41,14 @@ class Backend(QObject):
         self.signal_splot.emit(coords, fov, wcs, data)
 
     def calculate_pa(self, ra, dec, time):
-        if self.worker and self.worker.isRunning():
-            paralactic = self.worker.pa_calculator(ra, dec, time)
-            self.signal_pangle.emit(paralactic)
+        if dec == 'null':
+            c = SkyCoord.from_name(ra)
+            p = parallactic_angle(c.ra.to_string(u.hour), 
+                                  c.dec.to_string(u.deg), time)
+            self.signal_pangle.emit(p)
+        else:
+            p = parallactic_angle(ra, dec, time)
+            self.signal_pangle.emit(p)
 
     def send_flags(self, content, mag):
         self.signal_flags.emit(content, mag)
@@ -50,3 +61,7 @@ class Backend(QObject):
 
     def send_error(self, error):
         self.signal_error.emit(error)
+
+    def stop(self):
+        if self.worker and self.worker.isRunning():
+            self.worker.stop()

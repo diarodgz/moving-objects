@@ -75,7 +75,6 @@ class Worker(QThread):
         self.rot = None
         self.fov = None
         self.cat = None
-        self.thread = None
         self.skys = None
         self.hips = None
         self.t_scale = None
@@ -300,7 +299,7 @@ class Worker(QThread):
             self.signal_error.emit("Path not found.")
         else:
             ob_raw = read_ob(path)
-            eph_raw = read_eph
+            eph_raw = read_eph()
 
             ob_processed = process_desc(ob_raw)
             eph_processed = process_eph(eph_raw)
@@ -381,7 +380,7 @@ class Worker(QThread):
             self.signal_progress.emit(50, 'Queried sky region...')
 
         try:
-            content = single_sky_flag(target, result, catalog)
+            content = single_sky_flag(target, result, self.cat)
         except IndexError as e:
             print(f"Table empty.")
             self.signal_error.emit("Table empty.")
@@ -451,6 +450,17 @@ class Worker(QThread):
 
 
     def flagging(self, skys: list):
+        '''
+        Flags objects within a distance of 0.5 arcminutes.
+        
+        ---------
+        Parameters:
+        ---------
+        skys: list of Sky objects.
+        ---------
+        returns: None
+        
+        '''
         content = []
 
         try:
@@ -496,15 +506,20 @@ class Worker(QThread):
         self.signal_progress.emit(50, "Sending skys to front end...")
         self.signal_plot.emit(skys, wcs_out, array)
 
-    def send_skyfov(self, date):
+    #def send_skyfov(self, date):
 
-        sky = list(filter(lambda x: (x.date.value == date), self.skys))
-        self.signal_skyfov.emit(sky[0].coords.ra.value, 
-                                sky[0].coords.dec.value, self.fov)
+    #    sky = list(filter(lambda x: (x.date.value == date), self.skys))
+    #    self.signal_skyfov.emit(sky[0].coords.ra.value, 
+    #                            sky[0].coords.dec.value, self.fov)
         
     def pa_calculator(self, ra: str, dec: str, time: str):
-        p = parallactic_angle(ra, dec, time)
-        self.signal_send_pa.emit(p)
+        if dec == 'null':
+            c = SkyCoord.from_name(ra)
+            p = parallactic_angle(c.ra.to_string(u.hour), c.dec.to_string(u.deg), time)
+            self.signal_send_pa.emit(p)
+        else:
+            p = parallactic_angle(ra, dec, time)
+            self.signal_send_pa.emit(p)
         
 
     def send_best_seen(self, skys):
@@ -513,12 +528,9 @@ class Worker(QThread):
         self.signal_progress.emit(100, "Sending best dates...")
         self.finished.emit()
 
-
-
-
-
-
-
+    def stop(self):
+        self._running = False
+        self.signal_progress.emit(0, 'Query cancelled')
 
 
 

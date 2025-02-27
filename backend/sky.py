@@ -217,13 +217,16 @@ class Sky:
                          frame='icrs', unit=(u.deg, u.deg))
             d = s.separation(self.coords)
 
-            if d < 0.5 * u.arcmin:
+            mag = [key for key in config['CATALOG'][self.catalog]['filter'].keys()][0]
+            lim = config['CATALOG'][self.catalog]['filter'][mag].lstrip('<').lstrip('>')
+
+            if d < 0.5 * u.arcmin or float(star[mag]) <= 15:
                 info = {
-                    'ra': s.ra.value,
-                    'dec': s.dec.value,
-                    'mag': [key for key in config['CATALOG'][self.catalog]['filter'].keys()][0],
+                    'ra': s.ra.to_string(u.hour),
+                    'dec': s.dec.to_string(u.deg),
+                    'mag': star[mag],
                     'dist': d,
-                    'date': Time('2000-01-01 00:00:00', scale='utc')
+                    'date': self.date
                 }
 
                 content.append(info)
