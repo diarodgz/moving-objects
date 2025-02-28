@@ -525,7 +525,7 @@ class Worker(QThread):
     def send_best_seen(self, skys):
         best_seen_dates = best_seen(skys)
         self.signal_best.emit(best_seen_dates)
-        self.signal_progress.emit(100, "Sending best dates...")
+        self.signal_progress.emit(100, best_seen_dates)
         self.finished.emit()
 
     def stop(self):
